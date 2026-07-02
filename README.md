@@ -4,7 +4,7 @@ Catat belanja pakai kamera. Foto label harga di rak, AI-nya (Google Gemini) baca
 
 Dibuat untuk belanja di supermarket dan minimarket — di mana barang ditata di rak dengan label harga.
 
-Appnya jalan di browser, gratis, tanpa server. Kamu pakai API key Gemini punyamu sendiri, dan key itu cuma disimpan di browsermu.
+Appnya jalan di browser. Kalau pakai API key sendiri, key itu cuma disimpan di browsermu. Mode Demo lewat proxy serverless supaya key demo tidak pernah masuk ke browser.
 
 ## Buat kamu yang cuma mau nyatet belanja
 
@@ -93,4 +93,4 @@ Model AI-nya diatur di konstanta `MODEL` paling atas `app.js`. Sekarang isinya `
 
 ## Privasi
 
-Nggak ada data yang dikirim ke server pihak ketiga selain ke Google Gemini, itu pun cuma buat baca gambar labelnya. Key-mu disimpan di browsermu sendiri, nggak lewat aku. Foto label dikirim ke Google buat diproses, dan di jatah gratis datanya bisa dipakai Google buat ningkatin layanan, jadi mending jangan motret yang ada info pribadinya.
+Mode Demo mengirim foto label ke proxy Keranjang Pintar terlebih dulu agar API key demo tetap aman di server. Proxy hanya meneruskan gambar ke Google Gemini untuk membaca nama dan harga, tidak menyimpan foto. Kalau kamu memakai API key sendiri, key tetap disimpan di browsermu dan request berjalan langsung ke Google Gemini.

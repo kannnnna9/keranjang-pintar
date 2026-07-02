@@ -5,6 +5,15 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.1.0] - 2026-07-02
+
+### Ditambahkan / Keamanan
+
+- **Demo Mode aman via proxy serverless.** Demo tidak lagi menyimpan API key Gemini di `app.js`; key demo berada di Cloudflare Worker secret.
+- **Limit demo server-side.** Demo dibatasi 50 scan sukses per perangkat per hari, 150 scan sukses per IP per hari, dan cooldown 5 detik per perangkat.
+- **Rotasi 3 akun demo di server.** Worker melakukan round-robin, melewati key yang terkena 429, dan menonaktifkan key yang 401/403.
+- **BYOK tetap lokal.** Pengguna yang memakai API key sendiri tetap memanggil Gemini langsung dari browser seperti sebelumnya.
+
 ## [2.0.1] - 2026-06-30
 
 ### Diubah / Keamanan
