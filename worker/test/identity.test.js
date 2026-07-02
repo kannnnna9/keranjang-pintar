@@ -25,3 +25,19 @@ test("clientIp reads Cloudflare connecting IP first", () => {
 
   assert.equal(clientIp(request), "203.0.113.5");
 });
+
+test("clientIp falls back to first forwarded IP", () => {
+  const request = new Request("https://worker.test", {
+    headers: {
+      "x-forwarded-for": "198.51.100.10, 198.51.100.11",
+    },
+  });
+
+  assert.equal(clientIp(request), "198.51.100.10");
+});
+
+test("clientIp falls back to 0.0.0.0", () => {
+  const request = new Request("https://worker.test");
+
+  assert.equal(clientIp(request), "0.0.0.0");
+});
