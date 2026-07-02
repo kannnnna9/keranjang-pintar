@@ -20,7 +20,7 @@ export function parseGeminiText(text) {
 
   const harga = Number.parseInt(String(obj.harga).replace(/\D/g, ""), 10);
   return {
-    nama: obj.nama || "",
+    nama: obj.nama == null ? "" : String(obj.nama),
     harga: Number.isNaN(harga) ? "" : harga,
   };
 }

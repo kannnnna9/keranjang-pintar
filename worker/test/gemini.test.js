@@ -23,6 +23,13 @@ test("parseGeminiText rejects null payloads with a user-safe error", () => {
   );
 });
 
+test("parseGeminiText coerces nama to a string", () => {
+  assert.deepEqual(parseGeminiText("{\"nama\":123,\"harga\":5000}"), {
+    nama: "123",
+    harga: 5000,
+  });
+});
+
 test("classifyGeminiStatus maps auth, quota, and server errors", () => {
   assert.equal(classifyGeminiStatus(401).kind, "disabled");
   assert.equal(classifyGeminiStatus(403).kind, "disabled");
