@@ -69,6 +69,10 @@ export async function parseDemoScanRequest(request) {
     throw new PublicError("BAD_REQUEST", "JSON tidak valid.", 400);
   }
 
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new PublicError("BAD_REQUEST", "JSON tidak valid.", 400);
+  }
+
   const deviceId = typeof body.deviceId === "string" ? body.deviceId.trim() : "";
   const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64.trim() : "";
 
