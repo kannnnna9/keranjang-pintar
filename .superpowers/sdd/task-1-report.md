@@ -74,3 +74,81 @@ Observed result:
 ### Commit
 
 Committed the Worker scaffold and this report after verification.
+
+---
+
+### Fix Append
+
+Addressed the reviewer note on the Worker package version by aligning `worker/package.json` to `2.1.0`, and added a minimal `node:test` file for the scaffold routes:
+
+- `worker/test/index.test.js`
+
+Focused verification after the fix:
+
+```bash
+node --test /data/data/com.termux/files/home/claude-setup/projects/keranjang-pintar/.worktrees/demo-mode-v2-proxy/worker/test/index.test.js
+node --check /data/data/com.termux/files/home/claude-setup/projects/keranjang-pintar/.worktrees/demo-mode-v2-proxy/worker/src/index.js
+```
+
+Observed result:
+
+- `2` tests passed
+- `0` tests failed
+- `node --check` passed with exit code `0`
+
+---
+
+## Task 1 Fix Report
+
+### Scope
+
+Applied the smallest follow-up fix for the Worker scaffold:
+
+- aligned `worker/package.json` version with the release constraint
+- added minimal `node:test` coverage for `/health` and 404 behavior
+
+No unrelated files were touched.
+
+### Changes
+
+- `worker/package.json`
+  - changed `version` from `0.1.0` to `2.1.0`
+- `worker/test/index.test.js`
+  - added one test for `GET /health`
+  - added one test for unknown routes returning the existing 404 JSON payload
+
+### Verification
+
+Run in `worker/`:
+
+```bash
+npm test
+```
+
+Observed output:
+
+```text
+> keranjang-pintar-demo-worker@2.1.0 test
+> node --test test/*.test.js
+
+✔ /health returns ok (170.37177ms)
+✔ unknown routes return 404 (1.953229ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 444.021302
+```
+
+Syntax check run:
+
+```bash
+node --check /data/data/com.termux/files/home/claude-setup/projects/keranjang-pintar/.worktrees/demo-mode-v2-proxy/worker/src/index.js
+```
+
+Observed result:
+
+- exit code `0`
