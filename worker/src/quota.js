@@ -87,8 +87,6 @@ export async function incrementUsage(db, scope, hash, date, now) {
 }
 
 export async function claimQuota(db, { deviceHash, ipHash, date, now, limits }) {
-  const previousDevice = await loadUsage(db, "device", deviceHash, date);
-
   await db
     .prepare(
       `INSERT OR IGNORE INTO daily_usage (scope, hash, date, count, last_request_at)
@@ -120,15 +118,14 @@ export async function claimQuota(db, { deviceHash, ipHash, date, now, limits }) 
     .first();
 
   if (!deviceRow) {
+    const currentDevice = await loadUsage(db, "device", deviceHash, date);
     return decideQuota({
-      deviceRow: previousDevice,
+      deviceRow: currentDevice,
       ipRow: { count: 0, last_request_at: 0 },
       now,
       limits,
     });
   }
-
-  const previousIp = await loadUsage(db, "ip", ipHash, date);
 
   await db
     .prepare(
@@ -158,10 +155,12 @@ export async function claimQuota(db, { deviceHash, ipHash, date, now, limits }) 
     .first();
 
   if (!ipRow) {
+    const currentDevice = await loadUsage(db, "device", deviceHash, date);
+    const currentIp = await loadUsage(db, "ip", ipHash, date);
     await releaseQuota(db, "device", deviceHash, date);
     return decideQuota({
-      deviceRow: previousDevice,
-      ipRow: previousIp,
+      deviceRow: currentDevice,
+      ipRow: currentIp,
       now,
       limits,
     });

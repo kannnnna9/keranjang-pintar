@@ -210,15 +210,12 @@ test("claimQuota reserves device and ip usage", async () => {
     ipLimit: 150,
     cooldownSeconds: 5,
   });
-  assert.match(prepared[0].query, /SELECT count, last_request_at FROM daily_usage/);
+  assert.match(prepared[0].query, /INSERT OR IGNORE INTO daily_usage/);
   assert.deepEqual(prepared[0].args, ["device", "device-hash", "2026-07-02"]);
-  assert.match(prepared[1].query, /INSERT OR IGNORE INTO daily_usage/);
-  assert.deepEqual(prepared[1].args, ["device", "device-hash", "2026-07-02"]);
-  assert.match(prepared[2].query, /UPDATE daily_usage/);
-  assert.deepEqual(prepared[2].args, [100, "device", "device-hash", "2026-07-02", 50, 100, 5]);
-  assert.deepEqual(prepared[3].args, ["ip", "ip-hash", "2026-07-02"]);
-  assert.deepEqual(prepared[4].args, ["ip", "ip-hash", "2026-07-02"]);
-  assert.deepEqual(prepared[5].args, [100, "ip", "ip-hash", "2026-07-02", 150]);
+  assert.match(prepared[1].query, /UPDATE daily_usage/);
+  assert.deepEqual(prepared[1].args, [100, "device", "device-hash", "2026-07-02", 50, 100, 5]);
+  assert.deepEqual(prepared[2].args, ["ip", "ip-hash", "2026-07-02"]);
+  assert.deepEqual(prepared[3].args, [100, "ip", "ip-hash", "2026-07-02", 150]);
 });
 
 test("releaseQuota decrements reserved usage", async () => {
@@ -295,4 +292,44 @@ test("claimQuota SQL runs on real sqlite", async () => {
     ipLimit: 150,
     cooldownSeconds: 5,
   });
+});
+
+test("claimQuota re-reads current device state when claim fails", async () => {
+  let deviceSelectCount = 0;
+  const db = {
+    prepare(query) {
+      return {
+        bind(...args) {
+          return {
+            async run() {},
+            async first() {
+              if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "device") {
+                deviceSelectCount += 1;
+                return deviceSelectCount === 1
+                  ? { count: 50, last_request_at: 100 }
+                  : { count: 50, last_request_at: 100 };
+              }
+
+              if (query.includes("UPDATE daily_usage") && args[1] === "device") {
+                return undefined;
+              }
+
+              return undefined;
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const result = await claimQuota(db, {
+    deviceHash: "device-hash",
+    ipHash: "ip-hash",
+    date: "2026-07-02",
+    now: 100,
+    limits,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "DEMO_QUOTA_DEVICE");
 });
