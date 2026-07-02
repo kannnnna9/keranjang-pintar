@@ -68,7 +68,10 @@ async function handleDemoScan(request, env, cors) {
     cooldownSeconds: Number(env.DEVICE_COOLDOWN_SECONDS || 5),
   };
   const { deviceId, imageBase64 } = await parseDemoScanRequest(request);
-  const salt = env.HASH_SALT || "local-dev-salt";
+  const salt = String(env.HASH_SALT || "");
+  if (!salt) {
+    throw new Error("Missing HASH_SALT");
+  }
   const deviceHash = await hashIdentifier(deviceId, salt);
   const ipHash = await hashIdentifier(clientIp(request), salt);
   const decision = await claimQuota(env.DB, {
@@ -125,6 +128,9 @@ async function callWithRotation(env, imageBase64, now) {
     } catch (error) {
       const kind = error.classification?.kind || "transient";
       await markKeyResult(env.DB, slot, kind, now);
+      if (kind === "permanent") {
+        throw error;
+      }
     }
   }
 
