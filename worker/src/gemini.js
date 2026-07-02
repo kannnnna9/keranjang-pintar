@@ -14,6 +14,10 @@ export function parseGeminiText(text) {
     throw new Error("Format hasil tidak terbaca");
   }
 
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("Format hasil tidak terbaca");
+  }
+
   const harga = Number.parseInt(String(obj.harga).replace(/\D/g, ""), 10);
   return {
     nama: obj.nama || "",
