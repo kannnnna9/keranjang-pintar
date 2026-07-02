@@ -87,127 +87,81 @@ export async function incrementUsage(db, scope, hash, date, now) {
 }
 
 export async function claimQuota(db, { deviceHash, ipHash, date, now, limits }) {
+  const previousDevice = await loadUsage(db, "device", deviceHash, date);
+
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO daily_usage (scope, hash, date, count, last_request_at)
+       VALUES (?, ?, ?, 0, 0)`,
+    )
+    .bind("device", deviceHash, date)
+    .run();
+
   const deviceRow = await db
     .prepare(
-      `WITH existing AS (
-         SELECT count AS previous_count, last_request_at AS previous_last_request_at
-         FROM daily_usage
-         WHERE scope = ? AND hash = ? AND date = ?
-       ),
-       upsert AS (
-         INSERT INTO daily_usage (scope, hash, date, count, last_request_at)
-         VALUES (?, ?, ?, 1, ?)
-         ON CONFLICT(scope, hash, date)
-         DO UPDATE SET
-           count = CASE
-             WHEN count >= ? OR (? - last_request_at) < ?
-               THEN count
-             ELSE count + 1
-           END,
-           last_request_at = CASE
-             WHEN count >= ? OR (? - last_request_at) < ?
-               THEN last_request_at
-             ELSE excluded.last_request_at
-           END
-         RETURNING count, last_request_at
-       )
-       SELECT
-         upsert.count,
-         upsert.last_request_at,
-         CASE
-           WHEN NOT EXISTS (SELECT 1 FROM existing) THEN 1
-           WHEN (SELECT previous_count FROM existing) >= ? THEN 0
-           WHEN (? - (SELECT previous_last_request_at FROM existing)) < ? THEN 0
-           ELSE 1
-         END AS claimed,
-         COALESCE((SELECT previous_count FROM existing), 0) AS previous_count,
-         COALESCE((SELECT previous_last_request_at FROM existing), 0) AS previous_last_request_at
-       FROM upsert`,
+      `UPDATE daily_usage
+       SET
+         count = count + 1,
+         last_request_at = ?
+       WHERE scope = ? AND hash = ? AND date = ?
+         AND count < ?
+         AND (? - last_request_at) >= ?
+       RETURNING count, last_request_at`,
     )
     .bind(
+      now,
       "device",
       deviceHash,
       date,
-      "device",
-      deviceHash,
-      date,
-      now,
-      limits.deviceDailyLimit,
-      now,
-      limits.cooldownSeconds,
-      limits.deviceDailyLimit,
-      now,
-      limits.cooldownSeconds,
       limits.deviceDailyLimit,
       now,
       limits.cooldownSeconds,
     )
     .first();
 
-  if (!deviceRow?.claimed) {
+  if (!deviceRow) {
     return decideQuota({
-      deviceRow: {
-        count: deviceRow?.previous_count || 0,
-        last_request_at: deviceRow?.previous_last_request_at || 0,
-      },
+      deviceRow: previousDevice,
       ipRow: { count: 0, last_request_at: 0 },
       now,
       limits,
     });
   }
 
+  const previousIp = await loadUsage(db, "ip", ipHash, date);
+
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO daily_usage (scope, hash, date, count, last_request_at)
+       VALUES (?, ?, ?, 0, 0)`,
+    )
+    .bind("ip", ipHash, date)
+    .run();
+
   const ipRow = await db
     .prepare(
-      `WITH existing AS (
-         SELECT count AS previous_count, last_request_at AS previous_last_request_at
-         FROM daily_usage
-         WHERE scope = ? AND hash = ? AND date = ?
-       ),
-       upsert AS (
-         INSERT INTO daily_usage (scope, hash, date, count, last_request_at)
-         VALUES (?, ?, ?, 1, ?)
-         ON CONFLICT(scope, hash, date)
-         DO UPDATE SET
-           count = CASE WHEN count >= ? THEN count ELSE count + 1 END,
-           last_request_at = excluded.last_request_at
-         RETURNING count, last_request_at
-       )
-       SELECT
-         upsert.count,
-         upsert.last_request_at,
-         CASE
-           WHEN NOT EXISTS (SELECT 1 FROM existing) THEN 1
-           WHEN (SELECT previous_count FROM existing) >= ? THEN 0
-           ELSE 1
-         END AS claimed,
-         COALESCE((SELECT previous_count FROM existing), 0) AS previous_count,
-         COALESCE((SELECT previous_last_request_at FROM existing), 0) AS previous_last_request_at
-       FROM upsert`,
+      `UPDATE daily_usage
+       SET
+         count = count + 1,
+         last_request_at = ?
+       WHERE scope = ? AND hash = ? AND date = ?
+         AND count < ?
+       RETURNING count, last_request_at`,
     )
     .bind(
-      "ip",
-      ipHash,
-      date,
-      "ip",
-      ipHash,
-      date,
       now,
-      limits.ipDailyLimit,
+      "ip",
+      ipHash,
+      date,
       limits.ipDailyLimit,
     )
     .first();
 
-  if (!ipRow?.claimed) {
+  if (!ipRow) {
     await releaseQuota(db, "device", deviceHash, date);
     return decideQuota({
-      deviceRow: {
-        count: deviceRow?.previous_count || 0,
-        last_request_at: deviceRow?.previous_last_request_at || 0,
-      },
-      ipRow: {
-        count: ipRow?.previous_count || 0,
-        last_request_at: ipRow?.previous_last_request_at || 0,
-      },
+      deviceRow: previousDevice,
+      ipRow: previousIp,
       now,
       limits,
     });
@@ -216,9 +170,9 @@ export async function claimQuota(db, { deviceHash, ipHash, date, now, limits }) 
   return {
     ok: true,
     quota: {
-      deviceUsed: deviceRow?.count || 0,
+      deviceUsed: deviceRow.count,
       deviceLimit: limits.deviceDailyLimit,
-      ipUsed: ipRow?.count || 0,
+      ipUsed: ipRow.count,
       ipLimit: limits.ipDailyLimit,
       cooldownSeconds: limits.cooldownSeconds,
     },

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import {
   claimQuota,
   decideQuota,
@@ -159,7 +160,7 @@ test("incrementUsage writes an increment row", async () => {
   assert.equal(ran, true);
 });
 
-test("claimQuota atomically reserves device and ip usage", async () => {
+test("claimQuota reserves device and ip usage", async () => {
   const prepared = [];
   const db = {
     prepare(query) {
@@ -167,25 +168,22 @@ test("claimQuota atomically reserves device and ip usage", async () => {
         bind(...args) {
           prepared.push({ query, args });
           return {
+            async run() {},
             async first() {
-              if (query.includes("FROM daily_usage") && args[0] === "device") {
-                return {
-                  count: 2,
-                  last_request_at: 100,
-                  claimed: 1,
-                  previous_count: 1,
-                  previous_last_request_at: 0,
-                };
+              if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "device") {
+                return { count: 1, last_request_at: 0 };
               }
 
-              if (query.includes("FROM daily_usage") && args[0] === "ip") {
-                return {
-                  count: 3,
-                  last_request_at: 100,
-                  claimed: 1,
-                  previous_count: 2,
-                  previous_last_request_at: 0,
-                };
+              if (query.includes("UPDATE daily_usage") && args[1] === "device") {
+                return { count: 2, last_request_at: 100 };
+              }
+
+              if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "ip") {
+                return { count: 2, last_request_at: 0 };
+              }
+
+              if (query.includes("UPDATE daily_usage") && args[1] === "ip") {
+                return { count: 3, last_request_at: 100 };
               }
 
               return undefined;
@@ -212,36 +210,15 @@ test("claimQuota atomically reserves device and ip usage", async () => {
     ipLimit: 150,
     cooldownSeconds: 5,
   });
-  assert.match(prepared[0].query, /RETURNING count, last_request_at/);
-  assert.deepEqual(prepared[0].args, [
-    "device",
-    "device-hash",
-    "2026-07-02",
-    "device",
-    "device-hash",
-    "2026-07-02",
-    100,
-    50,
-    100,
-    5,
-    50,
-    100,
-    5,
-    50,
-    100,
-    5,
-  ]);
-  assert.deepEqual(prepared[1].args, [
-    "ip",
-    "ip-hash",
-    "2026-07-02",
-    "ip",
-    "ip-hash",
-    "2026-07-02",
-    100,
-    150,
-    150,
-  ]);
+  assert.match(prepared[0].query, /SELECT count, last_request_at FROM daily_usage/);
+  assert.deepEqual(prepared[0].args, ["device", "device-hash", "2026-07-02"]);
+  assert.match(prepared[1].query, /INSERT OR IGNORE INTO daily_usage/);
+  assert.deepEqual(prepared[1].args, ["device", "device-hash", "2026-07-02"]);
+  assert.match(prepared[2].query, /UPDATE daily_usage/);
+  assert.deepEqual(prepared[2].args, [100, "device", "device-hash", "2026-07-02", 50, 100, 5]);
+  assert.deepEqual(prepared[3].args, ["ip", "ip-hash", "2026-07-02"]);
+  assert.deepEqual(prepared[4].args, ["ip", "ip-hash", "2026-07-02"]);
+  assert.deepEqual(prepared[5].args, [100, "ip", "ip-hash", "2026-07-02", 150]);
 });
 
 test("releaseQuota decrements reserved usage", async () => {
@@ -269,4 +246,53 @@ test("releaseQuota decrements reserved usage", async () => {
   assert.match(sql, /SET count = CASE WHEN count > 0 THEN count - 1 ELSE 0 END/);
   assert.deepEqual(bound, ["device", "abc", "2026-07-02"]);
   assert.equal(ran, true);
+});
+
+test("claimQuota SQL runs on real sqlite", async () => {
+  const sqlite = new DatabaseSync(":memory:");
+  sqlite.exec(`
+    CREATE TABLE daily_usage (
+      scope TEXT NOT NULL,
+      hash TEXT NOT NULL,
+      date TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      last_request_at INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (scope, hash, date)
+    );
+  `);
+
+  const db = {
+    prepare(query) {
+      const statement = sqlite.prepare(query);
+      return {
+        bind(...args) {
+          return {
+            async first() {
+              return statement.get(...args);
+            },
+            async run() {
+              statement.run(...args);
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const result = await claimQuota(db, {
+    deviceHash: "device-hash",
+    ipHash: "ip-hash",
+    date: "2026-07-02",
+    now: 100,
+    limits,
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.quota, {
+    deviceUsed: 1,
+    deviceLimit: 50,
+    ipUsed: 1,
+    ipLimit: 150,
+    cooldownSeconds: 5,
+  });
 });

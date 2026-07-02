@@ -52,23 +52,25 @@ test("demo scan route proxies successful scans through quota and rotation helper
                 return { value: "2" };
               }
 
-              if (query.includes("WITH existing") && args[0] === "device") {
+              if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "device") {
+                return { count: 1, last_request_at: 0 };
+              }
+
+              if (query.includes("UPDATE daily_usage") && args[1] === "device") {
                 return {
                   count: 2,
                   last_request_at: Math.floor(Date.parse("2026-07-02T00:00:00.000Z") / 1000),
-                  claimed: 1,
-                  previous_count: 1,
-                  previous_last_request_at: 0,
                 };
               }
 
-              if (query.includes("WITH existing") && args[0] === "ip") {
+              if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "ip") {
+                return { count: 2, last_request_at: 0 };
+              }
+
+              if (query.includes("UPDATE daily_usage") && args[1] === "ip") {
                 return {
                   count: 3,
                   last_request_at: Math.floor(Date.parse("2026-07-02T00:00:00.000Z") / 1000),
-                  claimed: 1,
-                  previous_count: 2,
-                  previous_last_request_at: 0,
                 };
               }
 
@@ -127,10 +129,12 @@ test("demo scan route proxies successful scans through quota and rotation helper
       cooldownSeconds: 5,
     },
   });
-  assert.equal(writes.length, 3);
-  assert.match(writes[0].query, /fail_count = 0/);
-  assert.match(writes[1].query, /INSERT INTO runtime_state/);
-  assert.match(writes[2].query, /INSERT INTO scan_events/);
+  assert.equal(writes.length, 5);
+  assert.match(writes[0].query, /INSERT OR IGNORE INTO daily_usage/);
+  assert.match(writes[1].query, /INSERT OR IGNORE INTO daily_usage/);
+  assert.match(writes[2].query, /fail_count = 0/);
+  assert.match(writes[3].query, /INSERT INTO runtime_state/);
+  assert.match(writes[4].query, /INSERT INTO scan_events/);
 });
 
 test("demo scan returns quota denial without calling gemini", async (t) => {
@@ -152,17 +156,15 @@ test("demo scan returns quota denial without calling gemini", async (t) => {
         bind(...args) {
           return {
             async first() {
-              if (query.includes("WITH existing") && args[0] === "device") {
-                return {
-                  count: 50,
-                  last_request_at: 0,
-                  claimed: 0,
-                  previous_count: 50,
-                  previous_last_request_at: 0,
-                };
+              if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "device") {
+                return { count: 50, last_request_at: 0 };
               }
 
-              if (query.includes("WITH existing") && args[0] === "ip") {
+              if (query.includes("UPDATE daily_usage") && args[1] === "device") {
+                return undefined;
+              }
+
+              if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "ip") {
                 throw new Error("ip claim should not run after device denial");
               }
 
@@ -172,7 +174,9 @@ test("demo scan returns quota denial without calling gemini", async (t) => {
               return { results: [] };
             },
             async run() {
-              throw new Error("no writes expected after denial");
+              if (!query.includes("INSERT OR IGNORE INTO daily_usage")) {
+                throw new Error("no writes expected after denial");
+              }
             },
           };
         },
@@ -216,4 +220,90 @@ test("demo scan returns quota denial without calling gemini", async (t) => {
     },
   });
   assert.equal(fetchCalled, false);
+});
+
+test("demo scan releases claimed quota when gemini fails", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const releases = [];
+
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  globalThis.fetch = async () => new Response("nope", { status: 503 });
+
+  const db = {
+    prepare(query) {
+      return {
+        bind(...args) {
+          return {
+            async first() {
+              if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "device") {
+                return { count: 1, last_request_at: 0 };
+              }
+
+              if (query.includes("UPDATE daily_usage") && args[1] === "device") {
+                return { count: 2, last_request_at: 100 };
+              }
+
+              if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "ip") {
+                return { count: 2, last_request_at: 0 };
+              }
+
+              if (query.includes("UPDATE daily_usage") && args[1] === "ip") {
+                return { count: 3, last_request_at: 100 };
+              }
+
+              if (query.includes("SELECT value FROM runtime_state")) {
+                return { value: "1" };
+              }
+
+              return undefined;
+            },
+            async all() {
+              if (query.includes("SELECT slot FROM demo_keys")) {
+                return { results: [{ slot: 1 }] };
+              }
+
+              return { results: [] };
+            },
+            async run() {
+              if (query.includes("SET count = CASE WHEN count > 0 THEN count - 1 ELSE 0 END")) {
+                releases.push(args);
+              }
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const response = await worker.fetch(
+    new Request("https://example.com/v1/demo/scan", {
+      method: "POST",
+      headers: {
+        origin: "https://kannnnna9.github.io",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        deviceId: "device-123",
+        imageBase64: "aGVsbG8=",
+      }),
+    }),
+    {
+      ALLOWED_ORIGINS: "https://kannnnna9.github.io",
+      DEVICE_DAILY_LIMIT: "50",
+      IP_DAILY_LIMIT: "150",
+      DEVICE_COOLDOWN_SECONDS: "5",
+      GEMINI_MODEL: "gemini-3.1-flash-lite",
+      GEMINI_KEY_1: "demo-key-1",
+      HASH_SALT: "salt",
+      DB: db,
+    },
+  );
+
+  assert.equal(response.status, 503);
+  assert.equal(releases.length, 2);
+  assert.deepEqual(releases[0], ["device", releases[0][1], "2026-07-02"]);
+  assert.deepEqual(releases[1], ["ip", releases[1][1], "2026-07-02"]);
 });
