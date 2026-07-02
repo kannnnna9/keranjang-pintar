@@ -27,24 +27,19 @@ const KEY_STORAGE = 'bco_api_key';
 const HISTORY_STORAGE = 'bco_history';
 const CART_STORAGE = 'bco_cart';
 
-/* ---------- Demo Mode (v2.0 → DIMATIKAN v2.0.1) ----------
-   3 API key demo yang dulu di-hardcode di sini DICABUT OTOMATIS oleh Google
-   karena terdeteksi di repo publik (risiko yang sudah diantisipasi waktu rilis
-   v2.0). Pelajaran: key di sisi-client TIDAK bisa bertahan di static site
-   publik — apa pun yang ditaruh di sini akan discan & dicabut lagi, biasanya
-   dalam hitungan menit–jam. Demo dimatikan lewat DEMO_AVAILABLE sampai ada
-   proxy serverless (key disimpan sebagai secret di server, tak pernah ke
-   browser). BYOK (key sendiri) tetap jalan normal. Kode demo dibiarkan utuh
-   agar mudah dihidupkan lagi lewat proxy nanti. */
-const DEMO_AVAILABLE = false;    // kill-switch: false = app BYOK-only (v2.0.1)
-const DEMO_KEYS = [];            // dikosongkan; key lama sudah mati. Nanti diisi server, bukan di file ini.
+/* ---------- Demo Mode (v2.1.0 via proxy) ----------
+   Demo tidak lagi menyimpan API key di browser. Scan demo dikirim ke Worker,
+   lalu Worker yang memegang key server-side, membatasi kuota, dan merotasi
+   akun demo. DEMO_AVAILABLE tetap false sampai Worker benar-benar live. */
+const DEMO_AVAILABLE = false;    // tetap false sampai Worker sudah dideploy
+const DEMO_PROXY_URL = 'https://keranjang-pintar-demo.<cloudflare-subdomain>.workers.dev/v1/demo/scan';
+const DEMO_DEVICE_KEY = 'kp_demo_device_id';
 const DEMO_DAILY_LIMIT = 50;     // keputusan 1: 50 scan/device/hari
 const DEMO_COOLDOWN_MS = 5000;   // 1 scan / 5 detik / device (cegah RPM 429)
 
 const DEMO_SCAN_KEY = 'kp_demo_scan_count'; // {date, count} scan sukses hari ini (reset harian)
 const ACTIVE_MODE_KEY = 'kp_active_mode';    // 'demo' | 'own_key'
 const DEMO_COOLDOWN_KEY = 'kp_demo_cooldown';// timestamp scan demo terakhir
-const DEMO_RR_KEY = 'kp_demo_rr';            // index giliran round-robin (persist)
 
 /* ---------- Mode aktif ---------- */
 function getActiveMode() { return localStorage.getItem(ACTIVE_MODE_KEY) || ''; }
@@ -60,8 +55,10 @@ function loadDemoCount() {
   } catch (_) {}
   return 0;
 }
-function bumpDemoCount() {
-  localStorage.setItem(DEMO_SCAN_KEY, JSON.stringify({ date: todayKey(), count: loadDemoCount() + 1 }));
+
+function cacheDemoQuota(quota) {
+  if (!quota || typeof quota.deviceUsed !== 'number') return;
+  localStorage.setItem(DEMO_SCAN_KEY, JSON.stringify({ date: todayKey(), count: quota.deviceUsed }));
 }
 
 /* ---------- Cooldown demo ----------
@@ -106,13 +103,12 @@ function passDemoGateOr(showCooldownIn) {
   return false;
 }
 
-/* ---------- Round-robin index (persist menembus refresh) ----------
-   Keputusan D: bagi beban rata antar key. Kembalikan index sekarang, simpan
-   giliran berikutnya. */
-function nextDemoIndex() {
-  const i = (parseInt(localStorage.getItem(DEMO_RR_KEY) || '0', 10)) % DEMO_KEYS.length;
-  localStorage.setItem(DEMO_RR_KEY, String((i + 1) % DEMO_KEYS.length));
-  return i;
+function getDemoDeviceId() {
+  let id = localStorage.getItem(DEMO_DEVICE_KEY);
+  if (id) return id;
+  id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  localStorage.setItem(DEMO_DEVICE_KEY, id);
+  return id;
 }
 
 // Versi aplikasi. Satu sumber kebenaran: teks versi di halaman pengaturan
@@ -647,7 +643,7 @@ async function scanLabel(base64) {
       try {
         const result = await callForMode(base64, SCAN_TIMEOUTS[i]);
         closeSheet('overlay-loading');
-        if (demo) { bumpDemoCount(); renderQuota(); } // kuota hanya naik saat sukses
+        if (demo) renderQuota();
         showResult(result.nama, result.harga);
         return;
       } catch (e) {
@@ -672,31 +668,55 @@ function showResultError(msg) {
   el.hidden = false;
 }
 
-/* Rotasi key demo: mulai dari giliran round-robin (keputusan D); kalau key itu
-   429 → skip ke key berikutnya, keliling maksimal 1 putaran penuh. Error non-429
-   (timeout/jaringan/format) dilempar apa adanya supaya retry-timeout di scanLabel
-   tetap berlaku. Satu putaran penuh 429 → semua kuota demo habis (pesan soft). */
-async function callGeminiWithRotation(base64, timeoutMs) {
-  const start = nextDemoIndex();
-  for (let step = 0; step < DEMO_KEYS.length; step++) {
-    const i = (start + step) % DEMO_KEYS.length;
-    try {
-      return await callGemini(DEMO_KEYS[i], base64, timeoutMs);
-    } catch (e) {
-      if (e.status === 429) continue; // key sibuk/penuh → coba berikutnya
-      throw e;                         // selain itu → biar scanLabel yang putuskan
-    }
+async function callDemoProxy(base64, timeoutMs) {
+  if (!DEMO_PROXY_URL || DEMO_PROXY_URL.includes('<cloudflare-subdomain>')) {
+    const err = new Error('Demo belum tersedia. Pakai API key sendiri atau input manual.');
+    err.permanent = true;
+    throw err;
   }
-  const err = new Error('Kuota demo habis hari ini. Coba lagi besok atau pakai key sendiri.');
-  err.allExhausted = true;
-  err.permanent = true; // jangan retry timeout; ini memang habis
-  throw err;
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+
+  let res;
+  try {
+    res = await fetch(DEMO_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: getDemoDeviceId(),
+        imageBase64: base64,
+      }),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    const err = new Error(e.name === 'AbortError' ? `timeout > ${timeoutMs / 1000}s` : e.message);
+    err.permanent = false;
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  let payload = null;
+  try { payload = await res.json(); } catch (_) {}
+
+  if (!res.ok || !payload || payload.ok === false) {
+    const err = new Error(payload?.message || 'Demo sedang tidak tersedia. Coba lagi nanti atau pakai API key sendiri.');
+    err.status = res.status;
+    err.code = payload?.code || 'DEMO_PROXY_ERROR';
+    err.quota = payload?.quota || null;
+    err.permanent = res.status >= 400 && res.status < 500 && res.status !== 429;
+    throw err;
+  }
+
+  if (payload.quota) cacheDemoQuota(payload.quota);
+  return payload.data;
 }
 
 /* Pilih jalur panggilan sesuai mode aktif. */
 function callForMode(base64, timeoutMs) {
   return getActiveMode() === 'demo'
-    ? callGeminiWithRotation(base64, timeoutMs)
+    ? callDemoProxy(base64, timeoutMs)
     : callGemini(getKey(), base64, timeoutMs);
 }
 
