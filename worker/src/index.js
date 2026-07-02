@@ -1,7 +1,7 @@
 import { callGemini } from "./gemini.js";
 import { corsHeaders, jsonError, jsonOk, parseDemoScanRequest, PublicError } from "./http.js";
 import { clientIp, hashIdentifier, todayUtc } from "./identity.js";
-import { decideQuota, incrementUsage, loadUsage, touchCooldown } from "./quota.js";
+import { claimQuota, releaseQuota } from "./quota.js";
 import {
   advanceCursor,
   loadCursor,
@@ -67,35 +67,35 @@ async function handleDemoScan(request, env, cors) {
   const salt = env.HASH_SALT || "local-dev-salt";
   const deviceHash = await hashIdentifier(deviceId, salt);
   const ipHash = await hashIdentifier(clientIp(request), salt);
-  const deviceRow = await loadUsage(env.DB, "device", deviceHash, date);
-  const ipRow = await loadUsage(env.DB, "ip", ipHash, date);
-  const decision = decideQuota({ deviceRow, ipRow, now, limits });
+  const decision = await claimQuota(env.DB, {
+    deviceHash,
+    ipHash,
+    date,
+    now,
+    limits,
+  });
 
   if (!decision.ok) {
     throw new PublicError(decision.code, decision.message, decision.status, decision.quota);
   }
 
-  await touchCooldown(env.DB, "device", deviceHash, date, now);
+  try {
+    const result = await callWithRotation(env, imageBase64, now);
 
-  const result = await callWithRotation(env, imageBase64, now);
+    await recordScanEvent(env.DB, {
+      now,
+      deviceHash,
+      ipHash,
+      keySlot: result.slot,
+      outcome: "success",
+    });
 
-  await incrementUsage(env.DB, "device", deviceHash, date, now);
-  await incrementUsage(env.DB, "ip", ipHash, date, now);
-  await recordScanEvent(env.DB, {
-    now,
-    deviceHash,
-    ipHash,
-    keySlot: result.slot,
-    outcome: "success",
-  });
-
-  return jsonOk(result.data, {
-    deviceUsed: decision.quota.deviceUsed + 1,
-    deviceLimit: limits.deviceDailyLimit,
-    ipUsed: decision.quota.ipUsed + 1,
-    ipLimit: limits.ipDailyLimit,
-    cooldownSeconds: limits.cooldownSeconds,
-  }, { headers: cors });
+    return jsonOk(result.data, decision.quota, { headers: cors });
+  } catch (error) {
+    await releaseQuota(env.DB, "device", deviceHash, date);
+    await releaseQuota(env.DB, "ip", ipHash, date);
+    throw error;
+  }
 }
 
 async function callWithRotation(env, imageBase64, now) {

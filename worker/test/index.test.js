@@ -24,7 +24,7 @@ test("unknown routes return 404", async () => {
 test("demo scan route proxies successful scans through quota and rotation helpers", async (t) => {
   const originalFetch = globalThis.fetch;
   const originalNow = Date.now;
-  const calls = [];
+  const writes = [];
 
   t.after(() => {
     globalThis.fetch = originalFetch;
@@ -48,14 +48,28 @@ test("demo scan route proxies successful scans through quota and rotation helper
         bind(...args) {
           return {
             async first() {
-              if (query.includes("SELECT count, last_request_at FROM daily_usage")) {
-                return args[0] === "device"
-                  ? { count: 1, last_request_at: 0 }
-                  : { count: 2, last_request_at: 0 };
-              }
-
               if (query.includes("SELECT value FROM runtime_state")) {
                 return { value: "2" };
+              }
+
+              if (query.includes("WITH existing") && args[0] === "device") {
+                return {
+                  count: 2,
+                  last_request_at: Math.floor(Date.parse("2026-07-02T00:00:00.000Z") / 1000),
+                  claimed: 1,
+                  previous_count: 1,
+                  previous_last_request_at: 0,
+                };
+              }
+
+              if (query.includes("WITH existing") && args[0] === "ip") {
+                return {
+                  count: 3,
+                  last_request_at: Math.floor(Date.parse("2026-07-02T00:00:00.000Z") / 1000),
+                  claimed: 1,
+                  previous_count: 2,
+                  previous_last_request_at: 0,
+                };
               }
 
               return undefined;
@@ -68,7 +82,7 @@ test("demo scan route proxies successful scans through quota and rotation helper
               return { results: [] };
             },
             async run() {
-              calls.push({ query, args });
+              writes.push({ query, args });
             },
           };
         },
@@ -113,5 +127,93 @@ test("demo scan route proxies successful scans through quota and rotation helper
       cooldownSeconds: 5,
     },
   });
-  assert.equal(calls.length, 6);
+  assert.equal(writes.length, 3);
+  assert.match(writes[0].query, /fail_count = 0/);
+  assert.match(writes[1].query, /INSERT INTO runtime_state/);
+  assert.match(writes[2].query, /INSERT INTO scan_events/);
+});
+
+test("demo scan returns quota denial without calling gemini", async (t) => {
+  const originalFetch = globalThis.fetch;
+
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  let fetchCalled = false;
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    return Response.json({});
+  };
+
+  const db = {
+    prepare(query) {
+      return {
+        bind(...args) {
+          return {
+            async first() {
+              if (query.includes("WITH existing") && args[0] === "device") {
+                return {
+                  count: 50,
+                  last_request_at: 0,
+                  claimed: 0,
+                  previous_count: 50,
+                  previous_last_request_at: 0,
+                };
+              }
+
+              if (query.includes("WITH existing") && args[0] === "ip") {
+                throw new Error("ip claim should not run after device denial");
+              }
+
+              return undefined;
+            },
+            async all() {
+              return { results: [] };
+            },
+            async run() {
+              throw new Error("no writes expected after denial");
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const response = await worker.fetch(
+    new Request("https://example.com/v1/demo/scan", {
+      method: "POST",
+      headers: {
+        origin: "https://kannnnna9.github.io",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        deviceId: "device-123",
+        imageBase64: "aGVsbG8=",
+      }),
+    }),
+    {
+      ALLOWED_ORIGINS: "https://kannnnna9.github.io",
+      DEVICE_DAILY_LIMIT: "50",
+      IP_DAILY_LIMIT: "150",
+      DEVICE_COOLDOWN_SECONDS: "5",
+      HASH_SALT: "salt",
+      DB: db,
+    },
+  );
+
+  assert.equal(response.status, 429);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    code: "DEMO_QUOTA_DEVICE",
+    message: "Kuota demo habis hari ini. Coba lagi besok atau pakai API key sendiri.",
+    quota: {
+      deviceUsed: 50,
+      deviceLimit: 50,
+      ipUsed: 0,
+      ipLimit: 150,
+      cooldownSeconds: 0,
+    },
+  });
+  assert.equal(fetchCalled, false);
 });
