@@ -37,6 +37,10 @@ export default {
       return jsonError("NOT_FOUND", "Not found.", 404, undefined, cors);
     }
 
+    if (!cors["Access-Control-Allow-Origin"]) {
+      return jsonError("ORIGIN_DENIED", "Origin tidak diizinkan.", 403, undefined, cors);
+    }
+
     try {
       return await handleDemoScan(request, env, cors);
     } catch (error) {
@@ -121,9 +125,6 @@ async function callWithRotation(env, imageBase64, now) {
     } catch (error) {
       const kind = error.classification?.kind || "transient";
       await markKeyResult(env.DB, slot, kind, now);
-      if (kind === "permanent") {
-        break;
-      }
     }
   }
 
