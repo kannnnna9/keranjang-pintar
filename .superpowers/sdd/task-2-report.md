@@ -31,3 +31,31 @@ Completed.
 
 ## Concerns
 - None.
+
+## Fix Follow-up
+- Added an object/null guard in `worker/src/http.js` so valid JSON bodies like `null` cannot reach `body.deviceId`.
+- Added a focused regression test in `worker/test/http.test.js` for `null` JSON bodies.
+
+## Verification
+- Ran `cd worker && npm test`
+- Result: 7 tests passed, 0 failed
+- Ran `node --check worker/src/index.js`
+- Result: passed
+
+---
+
+## Fix Append
+
+Addressed the reviewer note by adding a regression test for `null` JSON bodies in `worker/test/http.test.js`. The existing object/null guard in `worker/src/http.js` already prevents raw `TypeError` escapes.
+
+### Verification
+
+```bash
+node --test /data/data/com.termux/files/home/claude-setup/projects/keranjang-pintar/.worktrees/demo-mode-v2-proxy/worker/test/http.test.js
+node --check /data/data/com.termux/files/home/claude-setup/projects/keranjang-pintar/.worktrees/demo-mode-v2-proxy/worker/src/index.js
+```
+
+Observed result:
+
+- `5` tests passed, `0` failed
+- `node --check` passed with exit code `0`

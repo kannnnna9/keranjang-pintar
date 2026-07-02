@@ -38,6 +38,19 @@ test("parseDemoScanRequest rejects missing fields", async () => {
   );
 });
 
+test("parseDemoScanRequest rejects null json bodies", async () => {
+  const request = new Request("https://worker.test/v1/demo/scan", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "null",
+  });
+
+  await assert.rejects(
+    () => parseDemoScanRequest(request),
+    /JSON tidak valid/
+  );
+});
+
 test("parseDemoScanRequest accepts bounded jpeg base64 payload", async () => {
   const request = new Request("https://worker.test/v1/demo/scan", {
     method: "POST",
