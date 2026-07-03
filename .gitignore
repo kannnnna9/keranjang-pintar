@@ -5,3 +5,4 @@ node_modules/
 
 # Rancangan/dokumen internal — tidak ikut repo & GitHub Pages
 docs/
+worker/dist/
