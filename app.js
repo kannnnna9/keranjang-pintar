@@ -113,7 +113,7 @@ function getDemoDeviceId() {
 
 // Versi aplikasi. Satu sumber kebenaran: teks versi di halaman pengaturan
 // diisi dari sini saat init, jadi cukup ubah angka ini tiap rilis.
-const APP_VERSION = 'v2.1.0';
+const APP_VERSION = 'v2.1.1';
 
 const PROMPT = [
   'Baca teks pada label harga ini.',
@@ -356,6 +356,11 @@ function wireEvents() {
   });
   $('gallery-input').addEventListener('change', onGalleryPick);
 
+  // Uji galeri dari dashboard demo mode
+  $('btn-gallery-demo').addEventListener('click', () => {
+    $('gallery-input').click();
+  });
+
   // Riwayat
   $('btn-history-back').addEventListener('click', enterDashboard);
   $('btn-clear-history').addEventListener('click', clearHistory);
@@ -474,6 +479,8 @@ function applyDemoAvailability() {
   if (demoBtn) demoBtn.hidden = true;            // Welcome: sembunyikan tombol Demo
   const toDemo = $('btn-to-demo');
   if (toDemo) toDemo.hidden = true;              // Pengaturan: sembunyikan "Ganti ke Demo"
+  const galleryDemo = $('btn-gallery-demo');
+  if (galleryDemo) galleryDemo.hidden = true;    // Dashboard: sembunyikan galeri demo
   const own = $('btn-start-ownkey');
   if (own) { own.classList.remove('btn-ghost'); own.classList.add('btn-primary'); } // promosikan BYOK jadi CTA utama
 }
@@ -494,6 +501,9 @@ function enterDashboard() {
   showScreen('screen-dashboard');
   renderCart();
   renderQuota();
+  // Tampilkan/sembunyikan tombol galeri demo berdasarkan mode aktif
+  const galleryDemo = $('btn-gallery-demo');
+  if (galleryDemo) galleryDemo.hidden = getActiveMode() !== 'demo';
 }
 
 function openCamera() {

@@ -5,6 +5,12 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.1.1] - 2026-07-03
+
+### Ditambahkan
+
+- **Tombol galeri di dashboard demo mode.** Pengguna demo sekarang bisa langsung memilih gambar dari galeri tanpa harus masuk ke Pengaturan. Tombol "Uji dari Galeri" muncul di bawah tombol "Tambah Item" dengan gaya subtle (opacity 0.5) agar tidak mengganggu CTA utama.
+
 ## [2.1.0] - 2026-07-02
 
 ### Ditambahkan / Keamanan

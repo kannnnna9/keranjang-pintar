@@ -102,6 +102,14 @@ body {
   color: var(--text);
 }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent-hov); }
+.btn-subtle {
+  opacity: 0.5;
+  font-size: 0.875rem;
+  min-height: 44px;
+  border: none;
+  transition: opacity 0.15s;
+}
+.btn-subtle:active { opacity: 0.8; }
 
 .icon-btn {
   background: transparent;
