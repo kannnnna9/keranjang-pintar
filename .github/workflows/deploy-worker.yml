@@ -1,0 +1,36 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches:
+      - feat/demo-mode-v2-proxy
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Worker
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [production]
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Worker Dependencies
+        run: npm install
+        working-directory: worker
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy

@@ -12,4 +12,4 @@ DEVICE_COOLDOWN_SECONDS = "5"
 [[d1_databases]]
 binding = "DB"
 database_name = "keranjang_pintar_demo"
-database_id = "replace-after-d1-create"
+database_id = "026960c8-9680-4ee8-9644-93b12f6fa00d"
