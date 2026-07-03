@@ -1,9 +1,36 @@
+# Dependencies
 node_modules/
+
+# Build artifacts
+worker/dist/
 *.log
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Internal development files
+.superpowers/
+.claude/
+.codex/
+docs/
+*.tmp
+*.bak
+
+# Worktrees
 .worktrees/
 
-# Rancangan/dokumen internal — tidak ikut repo & GitHub Pages
-docs/
-worker/dist/
-.superpowers/
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Wrangler
+.wrangler/
