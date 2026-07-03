@@ -20,7 +20,8 @@ Thumbs.db
 .superpowers/
 .claude/
 .codex/
-docs/
+docs/superpowers/plans/
+docs/superpowers/sdd/
 *.tmp
 *.bak
 
