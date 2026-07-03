@@ -27,7 +27,7 @@ const KEY_STORAGE = 'bco_api_key';
 const HISTORY_STORAGE = 'bco_history';
 const CART_STORAGE = 'bco_cart';
 
-/* ---------- Demo Mode (v2.1.0 via proxy) ----------
+/* ---------- Demo Mode (v2.1.1 via proxy) ----------
    Demo tidak lagi menyimpan API key di browser. Scan demo dikirim ke Worker,
    lalu Worker yang memegang key server-side, membatasi kuota, dan merotasi
    akun demo. */
