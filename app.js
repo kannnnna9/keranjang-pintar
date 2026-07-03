@@ -31,8 +31,8 @@ const CART_STORAGE = 'bco_cart';
    Demo tidak lagi menyimpan API key di browser. Scan demo dikirim ke Worker,
    lalu Worker yang memegang key server-side, membatasi kuota, dan merotasi
    akun demo. DEMO_AVAILABLE tetap false sampai Worker benar-benar live. */
-const DEMO_AVAILABLE = false;    // tetap false sampai Worker sudah dideploy
-const DEMO_PROXY_URL = '';
+const DEMO_AVAILABLE = true;     // Worker sudah live!
+const DEMO_PROXY_URL = 'https://keranjang-pintar-demo.keranjang-pintar.workers.dev';
 const DEMO_DEVICE_KEY = 'kp_demo_device_id';
 const DEMO_DAILY_LIMIT = 50;     // keputusan 1: 50 scan/device/hari
 const DEMO_COOLDOWN_MS = 5000;   // 1 scan / 5 detik / device (cegah RPM 429)
