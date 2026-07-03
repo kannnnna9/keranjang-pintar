@@ -1,4 +1,5 @@
 const MAX_BASE64_CHARS = 1_500_000;
+const JPEG_MAGIC_BYTES = [0xff, 0xd8, 0xff];
 
 export class PublicError extends Error {
   constructor(code, message, status = 400, quota = undefined) {
@@ -92,5 +93,18 @@ export async function parseDemoScanRequest(request) {
     throw new PublicError("BAD_REQUEST", "Format gambar tidak valid.", 400);
   }
 
+  if (!isJpegBase64(imageBase64)) {
+    throw new PublicError("BAD_REQUEST", "Gambar harus berupa JPEG valid.", 400);
+  }
+
   return { deviceId, imageBase64 };
+}
+
+function isJpegBase64(imageBase64) {
+  try {
+    const binary = atob(imageBase64.slice(0, 16));
+    return JPEG_MAGIC_BYTES.every((byte, index) => binary.charCodeAt(index) === byte);
+  } catch {
+    return false;
+  }
 }

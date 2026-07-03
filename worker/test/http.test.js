@@ -51,7 +51,7 @@ test("parseDemoScanRequest rejects null json bodies", async () => {
   );
 });
 
-test("parseDemoScanRequest accepts bounded jpeg base64 payload", async () => {
+test("parseDemoScanRequest rejects non-jpeg base64 payload", async () => {
   const request = new Request("https://worker.test/v1/demo/scan", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -61,8 +61,24 @@ test("parseDemoScanRequest accepts bounded jpeg base64 payload", async () => {
     }),
   });
 
+  await assert.rejects(
+    () => parseDemoScanRequest(request),
+    /Gambar harus berupa JPEG valid/
+  );
+});
+
+test("parseDemoScanRequest accepts bounded jpeg base64 payload", async () => {
+  const request = new Request("https://worker.test/v1/demo/scan", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      deviceId: "device-123",
+      imageBase64: "/9j/2w==",
+    }),
+  });
+
   assert.deepEqual(await parseDemoScanRequest(request), {
     deviceId: "device-123",
-    imageBase64: "aGVsbG8=",
+    imageBase64: "/9j/2w==",
   });
 });

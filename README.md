@@ -12,12 +12,12 @@ Nggak usah bikin repo atau install apa-apa. Tinggal buka ini di HP:
 
 **https://kannnnna9.github.io/keranjang-pintar/**
 
-Saat ini rollout Demo aman masih ditahan sampai Worker-nya benar-benar live. Jadi untuk pemakaian sekarang, pakai API key Gemini sendiri dulu. Setelah Demo siap dideploy, pilihan itu baru dibuka di layar awal.
+Sekarang kamu bisa langsung pilih Demo atau pakai API key Gemini sendiri. Demo sudah jalan lewat proxy serverless, sementara mode API key sendiri tetap tersedia kalau kamu mau memakai kuota milikmu sendiri.
 
 Alurnya:
 
 1. Langsung aja buka link di atas.
-2. Tempel API key, pencet Simpan & Mulai.
+2. Di layar awal, pilih **Mulai dengan Demo** kalau mau langsung coba, atau tempel API key lalu pencet **Simpan & Mulai** kalau mau pakai kuotamu sendiri.
 3. Kamu masuk ke halaman keranjang. Ini halaman utamanya, sekaligus tempat liat daftar belanja sama totalnya. Awalnya masih kosong.
 4. Pencet "Tambah Item" buat buka kamera (kasih izin kamera kalau diminta). Arahkan ke label harga, pastiin tulisannya masuk bingkai, terus pencet tombol rana. Tunggu sebentar AI-nya baca.
 5. Cek hasilnya. Kalau nama atau harganya meleset, betulin langsung di situ, atur jumlahnya kalau ambil lebih dari satu, baru Tambah ke Keranjang. Habis itu balik sendiri ke keranjang, item sama totalnya udah keupdate.

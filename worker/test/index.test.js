@@ -3,6 +3,8 @@ import test from "node:test";
 
 import worker from "../src/index.js";
 
+const JPEG_BASE64 = "/9j/2w==";
+
 test("/health returns ok", async () => {
   const response = await worker.fetch(new Request("https://example.com/health"));
 
@@ -102,7 +104,7 @@ test("demo scan route proxies successful scans through quota and rotation helper
       },
       body: JSON.stringify({
         deviceId: "device-123",
-        imageBase64: "aGVsbG8=",
+        imageBase64: JPEG_BASE64,
       }),
     }),
     {
@@ -193,7 +195,7 @@ test("demo scan returns quota denial without calling gemini", async (t) => {
       },
       body: JSON.stringify({
         deviceId: "device-123",
-        imageBase64: "aGVsbG8=",
+        imageBase64: JPEG_BASE64,
       }),
     }),
     {
@@ -231,7 +233,7 @@ test("demo scan rejects requests without an allowed origin", async () => {
       },
       body: JSON.stringify({
         deviceId: "device-123",
-        imageBase64: "aGVsbG8=",
+        imageBase64: JPEG_BASE64,
       }),
     }),
     {
@@ -258,7 +260,7 @@ test("demo scan rejects missing hash salt", async () => {
       },
       body: JSON.stringify({
         deviceId: "device-123",
-        imageBase64: "aGVsbG8=",
+        imageBase64: JPEG_BASE64,
       }),
     }),
     {
@@ -277,12 +279,15 @@ test("demo scan rejects missing hash salt", async () => {
 
 test("demo scan releases claimed quota when gemini fails", async (t) => {
   const originalFetch = globalThis.fetch;
+  const originalNow = Date.now;
   const releases = [];
 
   t.after(() => {
     globalThis.fetch = originalFetch;
+    Date.now = originalNow;
   });
 
+  Date.now = () => Date.parse("2026-07-02T00:00:00.000Z");
   globalThis.fetch = async () => new Response("nope", { status: 503 });
 
   const db = {
@@ -340,7 +345,7 @@ test("demo scan releases claimed quota when gemini fails", async (t) => {
       },
       body: JSON.stringify({
         deviceId: "device-123",
-        imageBase64: "aGVsbG8=",
+        imageBase64: JPEG_BASE64,
       }),
     }),
     {
@@ -437,7 +442,7 @@ test("demo scan keeps rotating after a disabled key failure", async (t) => {
       },
       body: JSON.stringify({
         deviceId: "device-123",
-        imageBase64: "aGVsbG8=",
+        imageBase64: JPEG_BASE64,
       }),
     }),
     {
@@ -521,7 +526,7 @@ test("demo scan stops on permanent upstream errors", async (t) => {
       },
       body: JSON.stringify({
         deviceId: "device-123",
-        imageBase64: "aGVsbG8=",
+        imageBase64: JPEG_BASE64,
       }),
     }),
     {

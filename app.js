@@ -30,8 +30,8 @@ const CART_STORAGE = 'bco_cart';
 /* ---------- Demo Mode (v2.1.0 via proxy) ----------
    Demo tidak lagi menyimpan API key di browser. Scan demo dikirim ke Worker,
    lalu Worker yang memegang key server-side, membatasi kuota, dan merotasi
-   akun demo. DEMO_AVAILABLE tetap false sampai Worker benar-benar live. */
-const DEMO_AVAILABLE = true;     // Worker sudah live!
+   akun demo. */
+const DEMO_AVAILABLE = true;
 const DEMO_PROXY_URL = 'https://keranjang-pintar-demo.keranjang-pintar.workers.dev/v1/demo/scan';
 const DEMO_DEVICE_KEY = 'kp_demo_device_id';
 const DEMO_DAILY_LIMIT = 50;     // keputusan 1: 50 scan/device/hari
