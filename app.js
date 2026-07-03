@@ -32,7 +32,7 @@ const CART_STORAGE = 'bco_cart';
    lalu Worker yang memegang key server-side, membatasi kuota, dan merotasi
    akun demo. DEMO_AVAILABLE tetap false sampai Worker benar-benar live. */
 const DEMO_AVAILABLE = true;     // Worker sudah live!
-const DEMO_PROXY_URL = 'https://keranjang-pintar-demo.keranjang-pintar.workers.dev';
+const DEMO_PROXY_URL = 'https://keranjang-pintar-demo.keranjang-pintar.workers.dev/v1/demo/scan';
 const DEMO_DEVICE_KEY = 'kp_demo_device_id';
 const DEMO_DAILY_LIMIT = 50;     // keputusan 1: 50 scan/device/hari
 const DEMO_COOLDOWN_MS = 5000;   // 1 scan / 5 detik / device (cegah RPM 429)
