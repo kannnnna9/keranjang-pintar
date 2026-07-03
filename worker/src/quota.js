@@ -119,9 +119,10 @@ export async function claimQuota(db, { deviceHash, ipHash, date, now, limits }) 
 
   if (!deviceRow) {
     const currentDevice = await loadUsage(db, "device", deviceHash, date);
+    const currentIp = await loadUsage(db, "ip", ipHash, date);
     return decideQuota({
       deviceRow: currentDevice,
-      ipRow: { count: 0, last_request_at: 0 },
+      ipRow: currentIp,
       now,
       limits,
     });
@@ -155,9 +156,9 @@ export async function claimQuota(db, { deviceHash, ipHash, date, now, limits }) 
     .first();
 
   if (!ipRow) {
+    await releaseQuota(db, "device", deviceHash, date);
     const currentDevice = await loadUsage(db, "device", deviceHash, date);
     const currentIp = await loadUsage(db, "ip", ipHash, date);
-    await releaseQuota(db, "device", deviceHash, date);
     return decideQuota({
       deviceRow: currentDevice,
       ipRow: currentIp,

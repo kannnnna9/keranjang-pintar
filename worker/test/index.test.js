@@ -165,7 +165,7 @@ test("demo scan returns quota denial without calling gemini", async (t) => {
               }
 
               if (query.includes("SELECT count, last_request_at FROM daily_usage") && args[0] === "ip") {
-                throw new Error("ip claim should not run after device denial");
+                return { count: 7, last_request_at: 0 };
               }
 
               return undefined;
@@ -214,7 +214,7 @@ test("demo scan returns quota denial without calling gemini", async (t) => {
     quota: {
       deviceUsed: 50,
       deviceLimit: 50,
-      ipUsed: 0,
+      ipUsed: 7,
       ipLimit: 150,
       cooldownSeconds: 0,
     },

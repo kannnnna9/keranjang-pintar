@@ -333,3 +333,57 @@ test("claimQuota re-reads current device state when claim fails", async () => {
   assert.equal(result.ok, false);
   assert.equal(result.code, "DEMO_QUOTA_DEVICE");
 });
+
+test("claimQuota reports IP quota after rolling back device reservation", async () => {
+  const sqlite = new DatabaseSync(":memory:");
+  sqlite.exec(`
+    CREATE TABLE daily_usage (
+      scope TEXT NOT NULL,
+      hash TEXT NOT NULL,
+      date TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      last_request_at INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (scope, hash, date)
+    );
+
+    INSERT INTO daily_usage (scope, hash, date, count, last_request_at) VALUES
+      ('device', 'device-hash', '2026-07-02', 49, 0),
+      ('ip', 'ip-hash', '2026-07-02', 150, 0);
+  `);
+
+  const db = {
+    prepare(query) {
+      const statement = sqlite.prepare(query);
+      return {
+        bind(...args) {
+          return {
+            async first() {
+              return statement.get(...args);
+            },
+            async run() {
+              statement.run(...args);
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const result = await claimQuota(db, {
+    deviceHash: "device-hash",
+    ipHash: "ip-hash",
+    date: "2026-07-02",
+    now: 100,
+    limits,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "DEMO_QUOTA_IP");
+  assert.deepEqual(result.quota, {
+    deviceUsed: 49,
+    deviceLimit: 50,
+    ipUsed: 150,
+    ipLimit: 150,
+    cooldownSeconds: 0,
+  });
+});

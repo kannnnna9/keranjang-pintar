@@ -32,7 +32,7 @@ const CART_STORAGE = 'bco_cart';
    lalu Worker yang memegang key server-side, membatasi kuota, dan merotasi
    akun demo. DEMO_AVAILABLE tetap false sampai Worker benar-benar live. */
 const DEMO_AVAILABLE = false;    // tetap false sampai Worker sudah dideploy
-const DEMO_PROXY_URL = 'https://keranjang-pintar-demo.<cloudflare-subdomain>.workers.dev/v1/demo/scan';
+const DEMO_PROXY_URL = '';
 const DEMO_DEVICE_KEY = 'kp_demo_device_id';
 const DEMO_DAILY_LIMIT = 50;     // keputusan 1: 50 scan/device/hari
 const DEMO_COOLDOWN_MS = 5000;   // 1 scan / 5 detik / device (cegah RPM 429)
@@ -669,7 +669,7 @@ function showResultError(msg) {
 }
 
 async function callDemoProxy(base64, timeoutMs) {
-  if (!DEMO_PROXY_URL || DEMO_PROXY_URL.includes('<cloudflare-subdomain>')) {
+  if (!DEMO_PROXY_URL) {
     const err = new Error('Demo belum tersedia. Pakai API key sendiri atau input manual.');
     err.permanent = true;
     throw err;

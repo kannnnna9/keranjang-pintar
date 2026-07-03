@@ -12,7 +12,7 @@ Nggak usah bikin repo atau install apa-apa. Tinggal buka ini di HP:
 
 **https://kannnnna9.github.io/keranjang-pintar/**
 
-Pertama kali buka, kamu bisa pilih Demo atau pakai API key Gemini sendiri. Kalau pilih key sendiri, tempel sekali dan habis itu kepakai terus di HP itu.
+Saat ini rollout Demo aman masih ditahan sampai Worker-nya benar-benar live. Jadi untuk pemakaian sekarang, pakai API key Gemini sendiri dulu. Setelah Demo siap dideploy, pilihan itu baru dibuka di layar awal.
 
 Alurnya:
 
