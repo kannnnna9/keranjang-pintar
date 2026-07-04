@@ -102,14 +102,24 @@ body {
   color: var(--text);
 }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent-hov); }
-.btn-subtle {
-  opacity: 0.5;
-  font-size: 0.875rem;
-  min-height: 44px;
+/* Aksi sekunder low-emphasis: teks bisa-klik, bukan tombol (44px tap area invisible) */
+.link-btn {
+  background: none;
   border: none;
-  transition: opacity 0.15s;
+  width: auto;
+  min-height: 44px;
+  padding: 10px 8px;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color .15s;
 }
-.btn-subtle:active { opacity: 0.8; }
+.link-btn:hover, .link-btn:active { color: var(--accent-hov); }
+.link-btn-center { display: block; margin: 16px auto 0; text-align: center; }
+.link-btn-inline { display: block; margin: 14px auto 0; text-align: center; }
 
 .icon-btn {
   background: transparent;

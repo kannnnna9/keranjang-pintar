@@ -5,6 +5,17 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.1.2] - 2026-07-04
+
+### Diubah
+
+- **Hierarki tombol halaman Selamat Datang.** "Pakai API Key Sendiri" turun jadi teks bisa-diklik (bukan tombol block lagi) di bawah CTA utama "Mulai dengan Demo", biar jelas mana pilihan utama.
+- **"Uji dari Galeri" di dashboard demo** diubah dari tombol (`btn-ghost btn-subtle`) jadi teks-link polos, dengan jarak yang cukup dari tombol "Tambah Item" di atasnya (sebelumnya kepenempel).
+
+### Dihapus
+
+- **Tombol "Ganti ke Demo" di Pengaturan (mode API key sendiri).** Setelah user bawa API key sendiri, opsi balik ke demo dianggap tidak relevan lagi dan dicabut total (bukan disembunyikan) beserta kode terkait (`switchToDemo`).
+
 ## [2.1.1] - 2026-07-03
 
 ### Ditambahkan

@@ -2,7 +2,7 @@
   "name": "Keranjang Pintar",
   "short_name": "Keranjang",
   "description": "Scan label harga di rak, nama & harga dibaca otomatis oleh AI.",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "lang": "id",
   "start_url": "./",
   "scope": "./",

@@ -113,7 +113,7 @@ function getDemoDeviceId() {
 
 // Versi aplikasi. Satu sumber kebenaran: teks versi di halaman pengaturan
 // diisi dari sini saat init, jadi cukup ubah angka ini tiap rilis.
-const APP_VERSION = 'v2.1.1';
+const APP_VERSION = 'v2.1.2';
 
 const PROMPT = [
   'Baca teks pada label harga ini.',
@@ -401,7 +401,6 @@ function wireEvents() {
   // Pengaturan
   $('btn-change-key').addEventListener('click', changeKey);
   $('btn-to-ownkey').addEventListener('click', () => { closeSheet('sheet-settings'); showScreen('screen-setup'); });
-  $('btn-to-demo').addEventListener('click', switchToDemo);
 
   // Sheet kuota demo habis
   $('btn-demo-manual').addEventListener('click', () => { closeSheet('sheet-demo-block'); inputManual(); });
@@ -461,15 +460,6 @@ function startDemo() {
   enterDashboard();
 }
 
-/* Switch own_key → demo (§7). Key user TIDAK dihapus supaya gampang balik.
-   Keranjang & riwayat utuh (storage terpisah). No-op bila demo dimatikan. */
-function switchToDemo() {
-  if (!DEMO_AVAILABLE) return;
-  setActiveMode('demo');
-  closeSheet('sheet-settings');
-  enterDashboard();
-}
-
 /* v2.0.1: bila demo dimatikan (DEMO_AVAILABLE=false), sembunyikan semua jalan
    masuk demo dan jadikan "Pakai API Key Sendiri" CTA utama di layar Welcome.
    Dikontrol satu flag → tinggal balik ke true saat proxy serverless siap. */
@@ -477,12 +467,14 @@ function applyDemoAvailability() {
   if (DEMO_AVAILABLE) return;
   const demoBtn = $('btn-start-demo');
   if (demoBtn) demoBtn.hidden = true;            // Welcome: sembunyikan tombol Demo
-  const toDemo = $('btn-to-demo');
-  if (toDemo) toDemo.hidden = true;              // Pengaturan: sembunyikan "Ganti ke Demo"
   const galleryDemo = $('btn-gallery-demo');
   if (galleryDemo) galleryDemo.hidden = true;    // Dashboard: sembunyikan galeri demo
   const own = $('btn-start-ownkey');
-  if (own) { own.classList.remove('btn-ghost'); own.classList.add('btn-primary'); } // promosikan BYOK jadi CTA utama
+  if (own) {
+    own.classList.remove('link-btn', 'link-btn-center');
+    own.classList.add('btn', 'btn-primary', 'welcome-btn');
+    own.textContent = 'Pakai API Key Sendiri'; // promosikan BYOK jadi CTA utama (teks-link asalnya cuma opsi kedua)
+  }
 }
 
 /* Isi sheet Pengaturan sesuai mode aktif: tampilkan blok demo atau own_key. */
