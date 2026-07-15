@@ -119,7 +119,20 @@ body {
 }
 .link-btn:hover, .link-btn:active { color: var(--accent-hov); }
 .link-btn-center { display: block; margin: 16px auto 0; text-align: center; }
-.link-btn-inline { display: block; margin: 8px auto 0; text-align: center; }
+.link-btn-inline {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 8px 0 0;
+}
+.link-btn-inline::before,
+.link-btn-inline::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
 
 .icon-btn {
   background: transparent;
