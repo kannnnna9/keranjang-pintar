@@ -5,6 +5,12 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.1.3] - 2026-07-15
+
+### Diubah
+
+- **Posisi "Uji dari Galeri" di dashboard demo.** Sebelumnya nyempil di antara tombol "Tambah Item" dan baris "Input Manual/Selesai" (memecah alur aksi utama). Sekarang jadi elemen paling bawah footer, dengan garis pemisah tipis kiri-kanan (warna `--border`) yang mengisi ruang kosong horizontal. Margin atas dirapatkan (14px → 8px). Area tap tetap 44px dan kini full-width.
+
 ## [2.1.2] - 2026-07-04
 
 ### Diubah
