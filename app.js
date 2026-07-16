@@ -148,6 +148,7 @@ let cartSessionId = null; // id sesi belanja berjalan untuk grup foto F2
 let editIndex = -1;     // indeks item keranjang yang sedang diedit (-1 = tidak ada)
 let sessionSaved = false; // true bila komposisi keranjang ini sudah masuk riwayat
 let budget = 0;         // anggaran sesi ini (Rp); 0 = belum diatur. Per sesi, reset saat belanja baru.
+let lastReconcile = null;
 
 /* ---------- Keranjang anti-hilang ----------
    Keranjang & anggaran sesi disimpan ke localStorage tiap kali berubah,
@@ -409,6 +410,10 @@ function wireEvents() {
 
   // Ringkasan: bagikan daftar belanja saat ini
   $('btn-share-summary').addEventListener('click', shareSummary);
+  $('btn-reconcile').addEventListener('click', onReconcileClick);
+  $('receipt-file').addEventListener('change', onReceiptPicked);
+  $('btn-reconcile-back').addEventListener('click', enterDashboard);
+  $('btn-photo-close').addEventListener('click', () => closeSheet('sheet-photo'));
 
   // Edit item keranjang
   $('btn-edit-save').addEventListener('click', saveEdit);
@@ -1306,6 +1311,153 @@ function newShopping() {
   localStorage.removeItem(SESSION_STORAGE);
   closeSheet('sheet-summary');
   renderCart();
+}
+
+function onReconcileClick() {
+  if (localStorage.getItem(ACTIVE_MODE_KEY) === 'demo') {
+    alert('Fitur cocokkan struk butuh API key sendiri. Ganti ke mode "Pakai API Key Sendiri" di Pengaturan.');
+    return;
+  }
+  if (cart.length === 0) return;
+  $('receipt-file').value = '';
+  $('receipt-file').click();
+}
+
+async function onReceiptPicked(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    const base64 = await fileToBase64(file);
+    const cartData = cart.map((it) => ({ nama: it.nama, hargaRak: it.harga }));
+    openReconcileScreen();
+    const result = await reconcileReceipt(base64, cartData);
+    await applyReconcileResult(result);
+    renderReconcile(result);
+  } catch (_) {
+    showReconcileError('Gagal membaca struk. Coba lagi.');
+  }
+}
+
+async function applyReconcileResult(result) {
+  if (!window.PhotoDB || !cartSessionId) return;
+  const photos = await window.PhotoDB.getPhotosBySession(cartSessionId);
+  const byNama = {};
+  photos.forEach((photo) => { byNama[photo.nama] = photo; });
+  const now = Date.now();
+  for (const row of result) {
+    const photo = byNama[row.nama];
+    if (!photo) continue;
+    const status = window.Retention.mapMatchStatus(row.status);
+    photo.status = status;
+    photo.hargaKasir = row.hargaKasir != null ? row.hargaKasir : null;
+    photo.matchedAt = now;
+    if (status !== 'pending') photo.expiresAt = window.Retention.nextExpiry(status, now);
+    await window.PhotoDB.putPhoto(photo);
+  }
+}
+
+function openReconcileScreen() {
+  closeSheet('sheet-summary');
+  showScreen('screen-reconcile');
+  $('reconcile-error').hidden = true;
+  $('reconcile-body').innerHTML = '<p class="muted">Membaca struk...</p>';
+  $('reconcile-summary').innerHTML = '';
+}
+
+function showReconcileError(message) {
+  const error = $('reconcile-error');
+  error.textContent = message;
+  error.hidden = false;
+  $('reconcile-body').innerHTML = '';
+}
+
+function photoIdByNama(nama) {
+  const item = cart.find((entry) => entry.nama === nama && entry.photoId);
+  return item ? item.photoId : null;
+}
+
+function renderReconcile(result) {
+  lastReconcile = result;
+  const beda = result.filter((row) => row.status === 'beda');
+  const sama = result.filter((row) => row.status === 'sama');
+  const notFound = result.filter((row) => row.status === 'tak_ketemu');
+  const totalRak = result.reduce((sum, row) => sum + (row.hargaRak || 0), 0);
+  const totalKasir = result.reduce((sum, row) => sum + (row.hargaKasir || row.hargaRak || 0), 0);
+  const selisih = totalKasir - totalRak;
+  $('reconcile-summary').innerHTML =
+    `<div>Total rak ${rupiah(totalRak)} · Kasir ${rupiah(totalKasir)}</div>` +
+    `<div class="${selisih > 0 ? 'rc-diff' : ''}">Selisih ${rupiah(selisih)}</div>`;
+
+  const rowDiff = (row) => {
+    const photoId = photoIdByNama(row.nama);
+    return `<li class="rc-row rc-beda"><span class="rc-nama">${row.nama}</span>` +
+      `<span class="rc-price">Rak ${rupiah(row.hargaRak)} → Kasir ${rupiah(row.hargaKasir)} (${rupiah(row.hargaKasir - row.hargaRak)})</span>` +
+      (photoId ? `<button class="rc-foto" data-id="${photoId}" type="button">Foto</button><button class="rc-bukti" data-id="${photoId}" type="button">Bukti</button>` : '') +
+      '</li>';
+  };
+  const rowSame = (row) => `<li class="rc-row"><span class="rc-nama">${row.nama}</span><span class="rc-price">${rupiah(row.hargaKasir || row.hargaRak)} ✓</span></li>`;
+  const rowNotFound = (row) => `<li class="rc-row rc-nf"><span class="rc-nama">${row.nama}</span><span class="rc-price">Rak ${rupiah(row.hargaRak)}</span><button class="rc-manual" data-nama="${row.nama}" type="button">Cocokkan manual</button></li>`;
+  let html = '';
+  if (beda.length) html += `<h3>Beda harga (${beda.length})</h3><ul class="rc-list">${beda.map(rowDiff).join('')}</ul>`;
+  if (notFound.length) html += `<h3>Tak terdeteksi (${notFound.length})</h3><ul class="rc-list">${notFound.map(rowNotFound).join('')}</ul>`;
+  if (sama.length) html += `<h3>Sesuai (${sama.length})</h3><button id="btn-del-same" class="btn btn-ghost" type="button">Hapus semua foto sesuai</button><ul class="rc-list rc-collapse">${sama.map(rowSame).join('')}</ul>`;
+  $('reconcile-body').innerHTML = html || '<p class="muted">Tidak ada hasil rekonsiliasi.</p>';
+  wireReconcileButtons();
+}
+
+function wireReconcileButtons() {
+  $('reconcile-body').querySelectorAll('.rc-foto').forEach((button) => button.addEventListener('click', () => openPhoto(button.dataset.id)));
+  $('reconcile-body').querySelectorAll('.rc-bukti').forEach((button) => button.addEventListener('click', () => markEvidence(button.dataset.id, button)));
+  $('reconcile-body').querySelectorAll('.rc-manual').forEach((button) => button.addEventListener('click', () => manualMatch(button.dataset.nama)));
+  const deleteSame = $('btn-del-same');
+  if (deleteSame) deleteSame.addEventListener('click', deleteSamePhotos);
+}
+
+async function openPhoto(id) {
+  const photo = await window.PhotoDB.getPhoto(id);
+  if (!photo) { alert('Foto sudah terhapus.'); return; }
+  $('photo-view').src = 'data:image/jpeg;base64,' + photo.base64;
+  openSheet('sheet-photo');
+}
+
+async function markEvidence(id, button) {
+  const photo = await window.PhotoDB.getPhoto(id);
+  if (!photo) return;
+  photo.status = 'evidence';
+  photo.expiresAt = null;
+  await window.PhotoDB.putPhoto(photo);
+  if (button) { button.textContent = 'Bukti ✓'; button.disabled = true; }
+}
+
+async function deleteSamePhotos() {
+  if (!cartSessionId) return;
+  const photos = await window.PhotoDB.getPhotosBySession(cartSessionId);
+  for (const photo of photos) if (photo.status === 'matched_same') await window.PhotoDB.deletePhoto(photo.id);
+  alert('Foto item yang harganya sesuai telah dihapus.');
+}
+
+async function manualMatch(nama) {
+  const input = prompt('Harga di struk kasir untuk "' + nama + '" (kosongkan bila memang tak ada):');
+  if (input === null) return;
+  const hargaKasir = parseInt(input, 10);
+  const item = cart.find((entry) => entry.nama === nama);
+  const hargaRak = item ? item.harga : 0;
+  const status = Number.isNaN(hargaKasir) ? 'tak_ketemu' : (hargaKasir === hargaRak ? 'sama' : 'beda');
+  await applyReconcileResult([{ nama, hargaRak, hargaKasir: Number.isNaN(hargaKasir) ? null : hargaKasir, status }]);
+  if (lastReconcile) {
+    const row = lastReconcile.find((entry) => entry.nama === nama);
+    if (row) { row.hargaKasir = Number.isNaN(hargaKasir) ? null : hargaKasir; row.status = status; }
+  }
+  if (lastReconcile) renderReconcile(lastReconcile);
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 /* ============================================================
