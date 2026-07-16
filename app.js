@@ -130,6 +130,7 @@ const PROMPT = [
 
 /* ---------- State ---------- */
 let cart = [];          // [{ nama, harga, qty }]
+let pendingPromo = null; // promo{} yang akan ditempel ke item saat Tambah (null = tanpa promo)
 let stream = null;      // MediaStream kamera aktif
 let lastShot = null;    // base64 JPEG hasil jepret terakhir (untuk "Ulangi")
 let editIndex = -1;     // indeks item keranjang yang sedang diedit (-1 = tidak ada)
@@ -653,7 +654,7 @@ async function scanLabel(base64) {
         const result = await callForMode(base64, SCAN_TIMEOUTS[i]);
         closeSheet('overlay-loading');
         if (demo) renderQuota();
-        showResult(result.nama, result.harga);
+        showResult(result.nama, result.harga, undefined, result);
         return;
       } catch (e) {
         // Error permanen (key/kuota/format) atau percobaan terakhir → menyerah.
@@ -835,14 +836,73 @@ function parseResult(text) {
 /* ============================================================
    HASIL SCAN
    ============================================================ */
-function showResult(nama, harga, title) {
+function showResult(nama, harga, title, promoInfo) {
   $('result-title').textContent = title || 'Hasil Scan';
   $('res-error').hidden = true; // bersihkan error lama
   $('res-nama').value = nama;
   $('res-harga').value = harga;
   $('res-qty').value = 1; // tiap hasil baru mulai dari 1
+  renderPromoPicker(promoInfo);
   showPriceHint(nama);
   openSheet('sheet-result');
+}
+
+// Tampilkan chip pilihan harga bila label promo terdeteksi. Sebelum user
+// tap chip: harga & qty dikosongkan/dikunci sesuai tipe, tombol Tambah nonaktif.
+function renderPromoPicker(info) {
+  pendingPromo = null;
+  const box = $('res-promo');
+  const note = $('promo-note');
+  const qtyInp = $('res-qty');
+  qtyInp.disabled = false;
+  note.hidden = true;
+  if (!info || info.promoTipe === 'none') { box.hidden = true; setAddEnabled(true); return; }
+
+  const a = $('promo-a');
+  const b = $('promo-b');
+  box.hidden = false;
+  setAddEnabled(false); // paksa pilih sadar
+  $('res-harga').value = '';
+
+  if (info.promoTipe === 'member') {
+    a.textContent = `Member ${rupiah(info.hargaPromo)}`;
+    b.textContent = `Non-member ${rupiah(info.hargaNormal)}`;
+    a.onclick = () => pickPromo(info.hargaPromo, false,
+      { tipe: 'member', label: 'Member', hargaNormal: info.hargaNormal || null });
+    b.onclick = () => pickPromo(info.hargaNormal, false, null);
+  } else { // bulk
+    const n = info.promoQty || 0;
+    const lbl = n > 0 ? `Paket ${n} item` : 'Paket';
+    a.textContent = `${lbl} ${rupiah(info.hargaPromo)}`;
+    b.textContent = `Satuan ${rupiah(info.hargaNormal)}`;
+    a.onclick = () => pickPromo(info.hargaPromo, true,
+      { tipe: 'bulk', qtyPaket: n, label: lbl, hargaNormal: info.hargaNormal || null });
+    b.onclick = () => pickPromo(info.hargaNormal, false, null);
+  }
+}
+
+// Chip dipilih: isi harga, kunci qty bila paket, simpan jejak promo.
+function pickPromo(harga, lockQty, promo) {
+  $('res-harga').value = harga || '';
+  const qtyInp = $('res-qty');
+  const note = $('promo-note');
+  if (lockQty) {
+    qtyInp.value = 1;
+    qtyInp.disabled = true;
+    note.textContent = promo.qtyPaket > 0 ? `1 paket = ${promo.qtyPaket} item` : '1 paket';
+    note.hidden = false;
+  } else {
+    qtyInp.disabled = false;
+    note.hidden = true;
+  }
+  pendingPromo = promo;
+  setAddEnabled(true);
+}
+
+// Aktif/nonaktifkan tombol Tambah.
+function setAddEnabled(on) {
+  const btn = $('btn-add');
+  if (btn) btn.disabled = !on;
 }
 
 // Cari pembelian terakhir barang bernama sama di riwayat (match nama
