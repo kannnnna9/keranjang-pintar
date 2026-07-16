@@ -1392,11 +1392,11 @@ function exportHistoryCsv() {
   const data = loadHistory();
   if (data.length === 0) return;
   // Satu baris per item, plus kolom info sesi → mudah dipivot di spreadsheet.
-  const rows = [['Tanggal', 'Barang', 'Harga', 'Jumlah', 'Subtotal']];
+  const rows = [['Tanggal', 'Barang', 'Harga', 'Jumlah', 'Subtotal', 'Promo']];
   data.forEach((sesi) => {
     sesi.items.forEach((it) => {
       const q = itemQty(it);
-      rows.push([fmtDate(sesi.ts), it.nama, it.harga, q, itemSub(it)]);
+      rows.push([fmtDate(sesi.ts), it.nama, it.harga, q, itemSub(it), it.promo ? it.promo.label : '']);
     });
   });
   const csv = rows.map((r) => r.map(csvCell).join(',')).join('\n');
