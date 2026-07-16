@@ -122,7 +122,7 @@ test("demo scan route proxies successful scans through quota and rotation helper
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     ok: true,
-    data: { nama: "Susu", harga: 18500 },
+    data: { nama: "Susu", harga: 18500, promoTipe: "none", promoQty: 0, hargaPromo: 0, hargaNormal: 0 },
     quota: {
       deviceUsed: 2,
       deviceLimit: 50,
