@@ -314,6 +314,7 @@ function renderDemoBadge(el) {
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   wireEvents();
+  purgeExpiredPhotos();
   hydrateIcons(); // sisipkan SVG ke semua tombol [data-icon] statis
   applyDemoAvailability(); // v2.0.1: sembunyikan jalan-masuk demo bila DEMO_AVAILABLE=false
   const ver = $('app-version');
@@ -348,6 +349,15 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 });
+
+async function purgeExpiredPhotos() {
+  if (!window.PhotoDB || !window.Retention) return;
+  try {
+    const all = await window.PhotoDB.getAllPhotos();
+    const expiredIds = window.Retention.pickExpired(all, Date.now());
+    for (const id of expiredIds) await window.PhotoDB.deletePhoto(id);
+  } catch (_) {}
+}
 
 function wireEvents() {
   // Welcome / onboarding
