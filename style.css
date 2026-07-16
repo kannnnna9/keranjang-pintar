@@ -746,6 +746,21 @@ body {
 #screen-history > .empty         { animation-delay: .07s; }
 #screen-dashboard > .dash-foot   { animation-delay: .11s; }
 
+/* Promo: zona chip di sheet hasil */
+.promo-picker { margin: 4px 0 10px; }
+.promo-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.promo-chips .chip { cursor: pointer; }
+
+/* Promo: badge + harga coret di keranjang/ringkasan */
+.ci-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  margin-left: 6px; padding: 1px 6px;
+  font-size: 11px; line-height: 1.6;
+  color: var(--accent); border: 1px solid var(--border); border-radius: 999px;
+}
+.ci-badge svg { stroke: var(--accent); }
+.ci-strike { color: var(--accent); text-decoration: line-through; opacity: .6; font-size: 12px; }
+
 /* Hormati preferensi kurangi-gerak: matikan semua reveal & slide. */
 @media (prefers-reduced-motion: reduce) {
   #screen-dashboard > *,

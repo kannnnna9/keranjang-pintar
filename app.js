@@ -987,6 +987,17 @@ function cartTotal() { return cart.reduce((s, it) => s + itemSub(it), 0); }
 // Jumlah unit total seluruh keranjang (bukan jumlah baris).
 function cartUnits() { return cart.reduce((s, it) => s + itemQty(it), 0); }
 
+// HTML badge promo (chip kecil ikon tag + label). '' bila item tanpa promo.
+function promoBadge(it) {
+  return it.promo ? `<span class="ci-badge">${svgIcon('tag', 12)}${it.promo.label}</span>` : '';
+}
+// HTML harga coret harga normal bila ada. '' bila tak ada.
+function promoStrike(it) {
+  return it.promo && it.promo.hargaNormal
+    ? `<span class="ci-strike">${rupiah(it.promo.hargaNormal)}</span> `
+    : '';
+}
+
 function renderCart() {
   const cc = $('cart-count');
   if (cc) cc.textContent = cart.length;
@@ -1011,9 +1022,10 @@ function renderCart() {
       <button class="ci-tap" type="button">
         <span class="ci-text">
           <span class="ci-name"></span>
+          ${promoBadge(it)}
           <span class="ci-qty"></span>
         </span>
-        <span class="ci-price">${rupiah(itemSub(it))}</span>
+        <span class="ci-price">${promoStrike(it)}${rupiah(itemSub(it))}</span>
       </button>
       <button class="ci-del" aria-label="Hapus">${svgIcon('trash', 18)}</button>`;
     li.querySelector('.ci-name').textContent = it.nama;
@@ -1155,9 +1167,10 @@ function lineItem(it) {
   li.innerHTML = `
     <span class="ci-text">
       <span class="ci-name"></span>
+      ${promoBadge(it)}
       <span class="ci-qty"></span>
     </span>
-    <span class="ci-price">${rupiah(itemSub(it))}</span>`;
+    <span class="ci-price">${promoStrike(it)}${rupiah(itemSub(it))}</span>`;
   li.querySelector('.ci-name').textContent = it.nama;
   li.querySelector('.ci-qty').textContent = q > 1 ? `${q} × ${rupiah(it.harga)}` : '';
   return li;
