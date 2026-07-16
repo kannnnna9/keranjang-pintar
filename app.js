@@ -957,7 +957,10 @@ function addToCart() {
   // konfirmasi sekali (hanya pada item yang menyebabkan kelewatan).
   if (!confirmIfOverBudget(harga * qty)) return;
 
-  cart.push({ nama, harga, qty });
+  const item = { nama, harga, qty };
+  if (pendingPromo) item.promo = pendingPromo;
+  cart.push(item);
+  pendingPromo = null;
   sessionSaved = false; // keranjang berubah → boleh dicatat ulang
   persistCart();
   closeSheet('sheet-result');
