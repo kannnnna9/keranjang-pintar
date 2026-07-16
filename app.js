@@ -116,9 +116,16 @@ function getDemoDeviceId() {
 const APP_VERSION = 'v2.1.3';
 
 const PROMPT = [
-  'Baca teks pada label harga ini.',
-  "Keluarkan dalam format JSON: {nama: '...', harga: ...}.",
-  'Harga dalam Rupiah, tanpa titik/koma. Contoh: 16500 bukan 16.500.',
+  'Baca label harga ini. Keluarkan JSON dengan field:',
+  'nama (string), harga (angka rupiah tanpa titik),',
+  "promoTipe: 'none' | 'member' | 'bulk',",
+  'promoQty (angka; jumlah item dalam 1 paket bila bulk, selain itu 0),',
+  'hargaPromo (angka; harga member atau harga paket bila ada, selain itu 0),',
+  'hargaNormal (angka; harga coret non-member atau harga satuan bila ada, selain itu 0).',
+  "Kalau cuma 1 harga biasa: promoTipe 'none', harga = harga itu, sisanya 0.",
+  "Kalau ada harga member + harga coret: promoTipe 'member', hargaPromo = member, hargaNormal = coret.",
+  "Kalau ada 'N item = harga': promoTipe 'bulk', promoQty = N, hargaPromo = harga paket, hargaNormal = harga satuan bila tertera.",
+  'Angka tanpa titik/koma. Contoh: 16500 bukan 16.500.',
 ].join(' ');
 
 /* ---------- State ---------- */
@@ -737,7 +744,14 @@ async function callGemini(apiKey, base64, timeoutMs) {
       responseMimeType: 'application/json',
       responseSchema: {
         type: 'OBJECT',
-        properties: { nama: { type: 'STRING' }, harga: { type: 'NUMBER' } },
+        properties: {
+          nama: { type: 'STRING' },
+          harga: { type: 'NUMBER' },
+          promoTipe: { type: 'STRING' },
+          promoQty: { type: 'NUMBER' },
+          hargaPromo: { type: 'NUMBER' },
+          hargaNormal: { type: 'NUMBER' },
+        },
         required: ['nama', 'harga'],
       },
     },
