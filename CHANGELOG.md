@@ -5,6 +5,15 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.3.0] - 2026-07-16
+
+### Ditambahkan
+- **F2 — Bukti harga rak vs kasir**: foto label rak otomatis tersimpan per item saat scan (IndexedDB).
+- Tombol "Cocokkan Struk" di ringkasan belanja (BYOK): upload foto struk → Gemini cocokkan otomatis → tampil beda/sama/tak-terdeteksi + selisih total.
+- Koreksi manual harga kasir untuk item yang tak terdeteksi.
+- Kelola bukti: tandai foto sebagai bukti permanen atau hapus manual; auto-hapus (pending 24 jam, sesuai 8 jam, beda 24 jam).
+- Ikon foto di detail riwayat untuk menemukan bukti belakangan.
+
 ## [2.2.0] - 2026-07-16
 
 ### Ditambahkan

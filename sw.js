@@ -7,12 +7,14 @@
    (panggilan Gemini cross-origin sengaja tak disentuh SW).
    Cache diberi versi: ganti nomor ini tiap rilis agar cache lama dibuang.
    ============================================================ */
-const CACHE = 'kp-cache-v2.2.0';
+const CACHE = 'kp-cache-v2.3.0';
 const SHELL = [
   './',
   'index.html',
   'style.css',
   'app.js',
+  'retention.js',
+  'db.js',
   'manifest.json',
   'icon-192.png',
   'icon-512.png',

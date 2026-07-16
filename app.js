@@ -114,7 +114,7 @@ function getDemoDeviceId() {
 
 // Versi aplikasi. Satu sumber kebenaran: teks versi di halaman pengaturan
 // diisi dari sini saat init, jadi cukup ubah angka ini tiap rilis.
-const APP_VERSION = 'v2.2.0';
+const APP_VERSION = 'v2.3.0';
 
 const PROMPT = [
   'Baca label harga ini. Keluarkan JSON dengan field:',
