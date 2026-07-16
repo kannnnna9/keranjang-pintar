@@ -28,8 +28,10 @@ Alurnya:
 
 - **Input manual** — ketik nama & harga sendiri kalau labelnya susah difoto.
 - **Atur jumlah** — ambil 3 barang yang sama? naikin qty-nya, totalnya ngitung sendiri.
+- **Label promo** — kalau labelnya promo (harga member atau paket/bulk), AI-nya kenali. Kamu tinggal pilih harga mana yang dipakai lewat chip, harga normalnya kecoret biar keliatan hematnya.
+- **Bukti harga rak vs kasir** — tiap kali scan, foto labelnya kesimpen sementara. Habis belanja, pencet "Cocokkan Struk" (khusus mode API key sendiri), upload foto struk kasir, AI-nya bandingin harga rak sama harga kasir dan nunjukin mana yang beda. Fotonya bisa kamu jadiin bukti permanen atau kehapus otomatis (24 jam kalau beda, 8 jam kalau sama).
 - **Anggaran** — pasang batas belanja, ada bar yang nunjukin sisa anggaranmu selama belanja.
-- **Riwayat** — tiap belanja yang udah Selesai kesimpen sendiri, lengkap sama statistik "belanja bulan ini". Bisa diekspor ke CSV.
+- **Riwayat** — tiap belanja yang udah Selesai kesimpen sendiri, lengkap sama statistik "belanja bulan ini". Bisa diekspor ke CSV. Item yang ada fotonya dikasih ikon kamera buat buka bukti belakangan.
 - **Bagikan daftar** — kirim ringkasan belanja ke WhatsApp atau aplikasi lain.
 - **Bisa dipasang** — dari menu browser pilih "Add to Home Screen", nanti muncul kayak app beneran. Kerangkanya juga di-cache, jadi kebuka cepat walau sinyal lagi lemah (tapi buat scan tetap butuh internet, karena nyambung ke Gemini).
 
@@ -37,6 +39,7 @@ Hal-hal yang "kesimpen" di browser mu:
 
 - **Keranjang yang lagi jalan** item yang udah masuk keranjang bakal kesimpen sampai kamu menyelesaikan sesi belanja.
 - **Riwayat** belanja yang udah kamu Selesai-kan disimpan permanen di browsermu, sampai kamu hapus sendiri.
+- **Foto label rak** disimpan sementara di browser (IndexedDB) buat fitur cocokkan struk, kehapus otomatis sesuai retensi atau bisa kamu hapus sendiri.
 - **API key** juga tetap kesimpen, jadi nggak perlu tempel ulang.
 
 ## Ambil API key Gemini (gratis)
@@ -77,7 +80,9 @@ Buat kebanyakan orang, cukup pakai link di atas. Tapi kalau kamu pengen punya sa
 keranjang-pintar/
 ├── index.html      UI semua layar + layar setup key
 ├── style.css       Tampilan (palet "Ungu Lembut")
-├── app.js          Kamera, panggil Gemini, keranjang, riwayat, anggaran
+├── app.js          Kamera, panggil Gemini, keranjang, riwayat, anggaran, cocokkan struk
+├── retention.js    Logika retensi foto rak (kapan foto auto-hapus)
+├── db.js           Wrapper IndexedDB buat simpan foto label rak
 ├── manifest.json   Bikin app bisa dipasang sebagai PWA
 ├── sw.js           Service worker — cache kerangka app biar buka cepat
 ├── icon.svg        Ikon vektor (favicon)
