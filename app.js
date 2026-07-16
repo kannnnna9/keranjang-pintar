@@ -129,6 +129,16 @@ const PROMPT = [
   'Angka tanpa titik/koma. Contoh: 16500 bukan 16.500.',
 ].join(' ');
 
+const RECONCILE_PROMPT = [
+  'Kamu diberi FOTO STRUK KASIR dan DAFTAR BELANJA (nama + harga rak).',
+  'Baca harga tiap item di struk lalu cocokkan ke daftar belanja.',
+  'Nama di struk sering disingkat atau berupa kode, misalnya "IMG SPESIAL 85"',
+  '= "Indomie Goreng Spesial 85g".',
+  'Untuk tiap item daftar belanja, tentukan hargaKasir dari struk dan status:',
+  '"sama" bila hargaKasir sama dengan hargaRak, "beda" bila berbeda,',
+  'dan "tak_ketemu" bila item tak ada di struk. Balas HANYA JSON array.',
+].join(' ');
+
 /* ---------- State ---------- */
 let cart = [];          // [{ nama, harga, qty }]
 let pendingPromo = null; // promo{} yang akan ditempel ke item saat Tambah (null = tanpa promo)
@@ -824,6 +834,51 @@ async function callGemini(apiKey, base64, timeoutMs) {
   const data = await res.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   return parseResult(text);
+}
+
+async function reconcileReceipt(base64Struk, cartData) {
+  const body = {
+    contents: [{
+      parts: [
+        { text: RECONCILE_PROMPT + '\n\nDAFTAR BELANJA:\n' + JSON.stringify(cartData) },
+        { inline_data: { mime_type: 'image/jpeg', data: base64Struk } },
+      ],
+    }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            nama: { type: 'STRING' },
+            hargaRak: { type: 'INTEGER' },
+            hargaKasir: { type: 'INTEGER' },
+            status: { type: 'STRING', enum: ['sama', 'beda', 'tak_ketemu'] },
+          },
+          required: ['nama', 'status'],
+        },
+      },
+    },
+  };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  recordRequest();
+  try {
+    const res = await fetch(`${API_BASE}/${MODEL}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error('Gemini ' + res.status);
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : [];
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function parseResult(text) {
