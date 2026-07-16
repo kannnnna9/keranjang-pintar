@@ -817,8 +817,19 @@ function parseResult(text) {
   } catch (_) {
     throw new Error('Format hasil tidak terbaca');
   }
-  const harga = parseInt(String(obj.harga).replace(/\D/g, ''), 10);
-  return { nama: obj.nama || '', harga: isNaN(harga) ? '' : harga };
+  const num = (v) => {
+    const n = parseInt(String(v == null ? '' : v).replace(/\D/g, ''), 10);
+    return isNaN(n) ? 0 : n;
+  };
+  const harga = num(obj.harga);
+  return {
+    nama: obj.nama || '',
+    harga: harga === 0 ? '' : harga,
+    promoTipe: ['member', 'bulk'].includes(obj.promoTipe) ? obj.promoTipe : 'none',
+    promoQty: num(obj.promoQty),
+    hargaPromo: num(obj.hargaPromo),
+    hargaNormal: num(obj.hargaNormal),
+  };
 }
 
 /* ============================================================
