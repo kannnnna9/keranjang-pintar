@@ -5,6 +5,14 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.2.0] - 2026-07-16
+
+### Ditambahkan
+- Deteksi label promo: **member** (harga member vs coret non-member) & **bulk** (paket N item vs satuan).
+- Sheet hasil scan menampilkan chip pilihan harga saat promo terdeteksi; paket mengunci jumlah ke 1.
+- Item promo di keranjang & ringkasan diberi badge + harga normal dicoret.
+- Kolom "Promo" pada ekspor CSV riwayat.
+
 ## [2.1.3] - 2026-07-15
 
 ### Diubah
