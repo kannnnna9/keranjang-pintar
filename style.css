@@ -52,6 +52,8 @@ body {
 .rc-foto:hover, .rc-bukti:hover, .rc-manual:hover { border-color: var(--accent); color: var(--accent-hov); }
 .rc-collapse { max-height: 40vh; overflow-y: auto; }
 .photo-full { width: 100%; border-radius: var(--radius-sm); }
+.hist-foto { background: none; border: 1px solid var(--border); color: var(--accent); margin-left: 8px; min-height: 44px; min-width: 44px; border-radius: var(--radius-sm); cursor: pointer; }
+.hist-foto:hover { border-color: var(--accent); color: var(--accent-hov); }
 .err { color: #fca5a5; padding: 16px; text-align: center; }
 
 /* ---------- Typography helpers ---------- */

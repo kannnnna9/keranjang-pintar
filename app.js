@@ -1546,7 +1546,7 @@ function renderHistory() {
   });
 }
 
-function showHistoryDetail(i) {
+async function showHistoryDetail(i) {
   const sesi = loadHistory()[i];
   if (!sesi) return;
 
@@ -1555,6 +1555,7 @@ function showHistoryDetail(i) {
   sesi.items.forEach((it) => {
     list.appendChild(lineItem(it));
   });
+  decorateHistoryPhotos(list, sesi.items);
 
   $('hist-detail-title').textContent = fmtDate(sesi.ts);
   $('hist-detail-count').textContent = sesi.items.reduce((s, it) => s + itemQty(it), 0);
@@ -1562,6 +1563,28 @@ function showHistoryDetail(i) {
   $('btn-share-hist').dataset.index = i; // ingat sesi mana untuk tombol Bagikan
   $('btn-del-hist').dataset.index = i;   // …dan untuk tombol Hapus
   openSheet('sheet-history-detail');
+}
+
+async function decorateHistoryPhotos(sessionItemsEl, items) {
+  if (!window.PhotoDB) return;
+  const all = await window.PhotoDB.getAllPhotos();
+  const idByNama = {};
+  all.forEach((photo) => { idByNama[photo.nama] = photo.id; });
+  items.forEach((item, index) => {
+    const photoId = idByNama[item.nama];
+    const li = sessionItemsEl.children[index];
+    if (!photoId || !li) return;
+    const button = document.createElement('button');
+    button.className = 'hist-foto';
+    button.type = 'button';
+    button.textContent = 'Foto';
+    button.setAttribute('aria-label', 'Lihat foto rak');
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openPhoto(photoId);
+    });
+    li.appendChild(button);
+  });
 }
 
 function clearHistory() {
