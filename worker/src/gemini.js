@@ -18,10 +18,19 @@ export function parseGeminiText(text) {
     throw new Error("Format hasil tidak terbaca");
   }
 
-  const harga = Number.parseInt(String(obj.harga).replace(/\D/g, ""), 10);
+  const num = (v) => {
+    const n = Number.parseInt(String(v == null ? "" : v).replace(/\D/g, ""), 10);
+    return Number.isNaN(n) ? 0 : n;
+  };
+  const harga = num(obj.harga);
+  const tipe = ["member", "bulk"].includes(obj.promoTipe) ? obj.promoTipe : "none";
   return {
     nama: obj.nama == null ? "" : String(obj.nama),
-    harga: Number.isNaN(harga) ? "" : harga,
+    harga: harga === 0 ? "" : harga,
+    promoTipe: tipe,
+    promoQty: num(obj.promoQty),
+    hargaPromo: num(obj.hargaPromo),
+    hargaNormal: num(obj.hargaNormal),
   };
 }
 
@@ -66,6 +75,10 @@ export async function callGemini({ apiKey, imageBase64, model, fetchImpl = fetch
             properties: {
               nama: { type: "STRING" },
               harga: { type: "NUMBER" },
+              promoTipe: { type: "STRING" },
+              promoQty: { type: "NUMBER" },
+              hargaPromo: { type: "NUMBER" },
+              hargaNormal: { type: "NUMBER" },
             },
             required: ["nama", "harga"],
           },
@@ -87,5 +100,13 @@ export async function callGemini({ apiKey, imageBase64, model, fetchImpl = fetch
 }
 
 function promptText() {
-  return "Baca label harga pada gambar. Balas hanya JSON dengan field nama dan harga angka rupiah.";
+  return [
+    "Baca label harga pada gambar. Balas hanya JSON dengan field:",
+    "nama (string), harga (angka rupiah tanpa titik),",
+    "promoTipe ('none'|'member'|'bulk'),",
+    "promoQty (angka; jumlah item paket bila bulk, selain itu 0),",
+    "hargaPromo (angka; harga member/paket bila ada, selain itu 0),",
+    "hargaNormal (angka; harga coret non-member/satuan bila ada, selain itu 0).",
+    "1 harga biasa: promoTipe 'none'. Member+coret: 'member'. 'N item = harga': 'bulk'.",
+  ].join(" ");
 }
