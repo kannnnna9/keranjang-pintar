@@ -26,6 +26,7 @@ const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const KEY_STORAGE = 'bco_api_key';
 const HISTORY_STORAGE = 'bco_history';
 const CART_STORAGE = 'bco_cart';
+const SESSION_STORAGE = 'bco_session';
 
 /* ---------- Demo Mode (v2.1.1 via proxy) ----------
    Demo tidak lagi menyimpan API key di browser. Scan demo dikirim ke Worker,
@@ -133,6 +134,7 @@ let cart = [];          // [{ nama, harga, qty }]
 let pendingPromo = null; // promo{} yang akan ditempel ke item saat Tambah (null = tanpa promo)
 let stream = null;      // MediaStream kamera aktif
 let lastShot = null;    // base64 JPEG hasil jepret terakhir (untuk "Ulangi")
+let cartSessionId = null; // id sesi belanja berjalan untuk grup foto F2
 let editIndex = -1;     // indeks item keranjang yang sedang diedit (-1 = tidak ada)
 let sessionSaved = false; // true bila komposisi keranjang ini sudah masuk riwayat
 let budget = 0;         // anggaran sesi ini (Rp); 0 = belum diatur. Per sesi, reset saat belanja baru.
@@ -159,6 +161,15 @@ function restoreCart() {
       sessionSaved = !!o.sessionSaved;
     }
   } catch (_) {} // data rusak → mulai dengan keranjang kosong, jangan blokir app
+  cartSessionId = localStorage.getItem(SESSION_STORAGE) || null;
+}
+
+function ensureSessionId() {
+  if (!cartSessionId) {
+    cartSessionId = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    localStorage.setItem(SESSION_STORAGE, cartSessionId);
+  }
+  return cartSessionId;
 }
 
 /* ---------- Util DOM ---------- */
@@ -957,8 +968,29 @@ function addToCart() {
   // konfirmasi sekali (hanya pada item yang menyebabkan kelewatan).
   if (!confirmIfOverBudget(harga * qty)) return;
 
-  const item = { nama, harga, qty };
+  const item = { nama, harga, qty, photoId: null };
   if (pendingPromo) item.promo = pendingPromo;
+
+  // Simpan foto rak terpisah dari keranjang; kegagalan IndexedDB tidak boleh
+  // menggagalkan penambahan item.
+  if (lastShot && window.PhotoDB && window.Retention) {
+    const sid = ensureSessionId();
+    const now = Date.now();
+    const photoId = 'p_' + now + '_' + Math.random().toString(36).slice(2, 7);
+    item.photoId = photoId;
+    window.PhotoDB.putPhoto({
+      id: photoId,
+      sessionId: sid,
+      nama,
+      hargaRak: harga,
+      base64: lastShot,
+      createdAt: now,
+      status: 'pending',
+      expiresAt: window.Retention.nextExpiry('pending', now),
+      hargaKasir: null,
+      matchedAt: null,
+    });
+  }
   cart.push(item);
   pendingPromo = null;
   sessionSaved = false; // keranjang berubah → boleh dicatat ulang
@@ -1065,7 +1097,9 @@ function saveEdit() {
   const delta = harga * qty - itemSub(cart[editIndex]);
   if (delta > 0 && !confirmIfOverBudget(delta)) return;
 
-  cart[editIndex] = { nama, harga, qty };
+  const previous = cart[editIndex];
+  cart[editIndex] = { nama, harga, qty, photoId: previous.photoId || null };
+  if (previous.promo) cart[editIndex].promo = previous.promo;
   editIndex = -1;
   sessionSaved = false;
   persistCart();
@@ -1200,9 +1234,11 @@ function finishShopping() {
 function newShopping() {
   cart = [];
   lastShot = null;
+  cartSessionId = null;
   sessionSaved = false;
   budget = 0; // anggaran per sesi → reset saat mulai belanja baru
   localStorage.removeItem(CART_STORAGE); // belanja kelar → buang simpanan keranjang
+  localStorage.removeItem(SESSION_STORAGE);
   closeSheet('sheet-summary');
   renderCart();
 }
