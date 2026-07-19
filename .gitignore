@@ -20,8 +20,7 @@ Thumbs.db
 .superpowers/
 .claude/
 .codex/
-docs/superpowers/plans/
-docs/superpowers/sdd/
+docs/
 *.tmp
 *.bak
 
@@ -35,4 +34,3 @@ docs/superpowers/sdd/
 
 # Wrangler
 .wrangler/
-docs/superpowers/specs/
