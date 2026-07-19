@@ -783,3 +783,7 @@ body {
   #screen-history > *,
   .sheet { animation: none; }
 }
+
+.settings-contact { margin-top: 1rem; }
+.contact-links { display: flex; gap: .5rem; }
+.contact-links .btn { flex: 1; text-align: center; text-decoration: none; }

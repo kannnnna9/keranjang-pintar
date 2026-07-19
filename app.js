@@ -114,7 +114,7 @@ function getDemoDeviceId() {
 
 // Versi aplikasi. Satu sumber kebenaran: teks versi di halaman pengaturan
 // diisi dari sini saat init, jadi cukup ubah angka ini tiap rilis.
-const APP_VERSION = 'v2.3.0';
+const APP_VERSION = 'v2.3.1';
 
 const PROMPT = [
   'Baca label harga ini. Keluarkan JSON dengan field:',
@@ -386,6 +386,12 @@ function wireEvents() {
   $('btn-manual').addEventListener('click', inputManual);
   $('btn-finish').addEventListener('click', finishShopping);
   $('btn-settings').addEventListener('click', () => { renderQuota(); renderSettings(); openSheet('sheet-settings'); });
+  const btnScanReport = $('btn-scan-report');
+  if (btnScanReport) btnScanReport.addEventListener('click', () => {
+    closeSheet('sheet-result');
+    renderQuota(); renderSettings();
+    openSheet('sheet-settings');
+  });
   $('btn-history').addEventListener('click', openHistory);
 
   // Uji galeri (dari pengaturan): tutup sheet dulu, lalu pilih gambar dari
