@@ -5,6 +5,11 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.4.0] - 2026-07-21
+
+### Ditambahkan
+- Catatan Belanja lokal dengan parsing paste per baris, checkbox manual, FAB draggable, dan persistensi localStorage.
+
 ## [2.3.1] - 2026-07-19
 
 ### Ditambahkan

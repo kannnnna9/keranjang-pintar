@@ -114,7 +114,15 @@ function getDemoDeviceId() {
 
 // Versi aplikasi. Satu sumber kebenaran: teks versi di halaman pengaturan
 // diisi dari sini saat init, jadi cukup ubah angka ini tiap rilis.
-const APP_VERSION = 'v2.3.1';
+const APP_VERSION = 'v2.4.0';
+const NOTE_STORAGE = 'kp_shopping_note';
+const NOTE_POS_STORAGE = 'kp_note_fab_pos';
+const NOTE_MAX_ITEMS = 100;
+const NOTE_MAX_TEXT = 80;
+
+function parseShoppingNoteText(input) {
+  return String(input || '').split(/\n/).map((line) => line.replace(/^\s*(?:\[[ xX]\]\s*|(?:\(\d+\)|\d+[.)]|[-•*+])\s*)+/, '').trim().slice(0, NOTE_MAX_TEXT)).filter(Boolean).slice(0, NOTE_MAX_ITEMS);
+}
 
 const PROMPT = [
   'Baca label harga ini. Keluarkan JSON dengan field:',
@@ -149,6 +157,9 @@ let editIndex = -1;     // indeks item keranjang yang sedang diedit (-1 = tidak 
 let sessionSaved = false; // true bila komposisi keranjang ini sudah masuk riwayat
 let budget = 0;         // anggaran sesi ini (Rp); 0 = belum diatur. Per sesi, reset saat belanja baru.
 let lastReconcile = null;
+let shoppingNote = { items: [], updatedAt: 0 };
+let noteDrag = null;
+let noteIdleTimer = null;
 
 /* ---------- Keranjang anti-hilang ----------
    Keranjang & anggaran sesi disimpan ke localStorage tiap kali berubah,
@@ -190,9 +201,24 @@ const rupiah = (n) => 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach((s) => (s.hidden = true));
   $(id).hidden = false;
+  renderNoteFabVisibility();
 }
-function openSheet(id) { $(id).hidden = false; }
-function closeSheet(id) { $(id).hidden = true; }
+function openSheet(id) { $(id).hidden = false; renderNoteFabVisibility(); }
+function closeSheet(id) { $(id).hidden = true; renderNoteFabVisibility(); }
+function showToast(message) { const el = $('toast'); if (!el) return; el.textContent = message; el.hidden = false; clearTimeout(showToast.timer); showToast.timer = setTimeout(() => { el.hidden = true; }, 2800); }
+function persistShoppingNote() { shoppingNote.updatedAt = Date.now(); try { localStorage.setItem(NOTE_STORAGE, JSON.stringify(shoppingNote)); } catch (_) { showToast('Catatan mungkin tak tersimpan'); } }
+function restoreShoppingNote() { try { const data = JSON.parse(localStorage.getItem(NOTE_STORAGE)); if (data && Array.isArray(data.items)) shoppingNote = { items: data.items.filter((it) => it && typeof it.text === 'string').slice(0, NOTE_MAX_ITEMS), updatedAt: Number(data.updatedAt) || 0 }; } catch (_) { shoppingNote = { items: [], updatedAt: 0 }; } }
+function noteRemaining() { return shoppingNote.items.filter((it) => !it.checked).length; }
+function renderShoppingNote() { const list = $('note-list'); if (!list) return; list.innerHTML = ''; shoppingNote.items.forEach((item) => { const li = document.createElement('li'); li.className = 'note-item' + (item.checked ? ' is-checked' : ''); li.innerHTML = '<button class="note-row" type="button"><input type="checkbox" tabindex="-1"><span></span></button><button class="note-delete" type="button" aria-label="Hapus item">×</button>'; const row = li.querySelector('.note-row'); row.querySelector('input').checked = !!item.checked; row.querySelector('span').textContent = item.text; row.addEventListener('click', () => { item.checked = !item.checked; persistShoppingNote(); renderShoppingNote(); }); li.querySelector('.note-delete').addEventListener('click', () => { shoppingNote.items = shoppingNote.items.filter((it) => it.id !== item.id); persistShoppingNote(); renderShoppingNote(); }); list.appendChild(li); }); $('note-empty').hidden = shoppingNote.items.length > 0; $('note-progress').textContent = `${shoppingNote.items.length - noteRemaining()}/${shoppingNote.items.length} kebeli`; const badge = $('note-badge'); badge.hidden = noteRemaining() === 0; badge.textContent = noteRemaining(); }
+function addShoppingNoteText(text) { let parsed; try { parsed = parseShoppingNoteText(text); } catch (_) { showToast('Teks tidak bisa dibaca'); return; } const room = NOTE_MAX_ITEMS - shoppingNote.items.length; const added = parsed.slice(0, Math.max(0, room)); added.forEach((value) => shoppingNote.items.push({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, text: value, checked: false, createdAt: Date.now() })); if (parsed.length > added.length) showToast(`Catatan penuh, ${parsed.length - added.length} item terakhir tidak ditambahkan`); if (added.length) persistShoppingNote(); renderShoppingNote(); }
+function clearShoppingNote() { if (!shoppingNote.items.length || confirm('Bersihkan semua catatan?')) { shoppingNote.items = []; persistShoppingNote(); renderShoppingNote(); } }
+function openShoppingNote() { renderShoppingNote(); openSheet('sheet-shopping-note'); }
+function finalizeShopping(noteAction) { shoppingNote.items = noteAction === 'keep' ? shoppingNote.items.filter((it) => !it.checked).map((it) => ({ ...it, checked: false })) : []; persistShoppingNote(); renderShoppingNote(); closeSheet('sheet-note-finish'); openSheet('sheet-summary'); }
+function maybeFinishWithNote() { if (shoppingNote.items.length && noteRemaining()) { $('note-finish-count').textContent = noteRemaining(); $('note-finish-items').textContent = shoppingNote.items.filter((it) => !it.checked).map((it) => it.text).join(', '); openSheet('sheet-note-finish'); } else { shoppingNote.items = []; persistShoppingNote(); openSheet('sheet-summary'); } }
+function renderNoteFabVisibility() { const fab = $('note-fab'); if (!fab) return; const dashboard = !$('screen-dashboard').hidden; const anySheet = [...document.querySelectorAll('.sheet-backdrop')].some((el) => !el.hidden); fab.hidden = !dashboard || anySheet; }
+function resetNoteIdle() { const fab = $('note-fab'); if (!fab) return; fab.classList.remove('note-idle'); clearTimeout(noteIdleTimer); noteIdleTimer = setTimeout(() => fab.classList.add('note-idle'), 3000); }
+function initNoteFab() { const fab = $('note-fab'); if (!fab) return; fab.addEventListener('pointerdown', (e) => { resetNoteIdle(); fab.setPointerCapture(e.pointerId); noteDrag = { x: e.clientX, y: e.clientY, moved: false }; }); fab.addEventListener('pointermove', (e) => { if (!noteDrag) return; if (Math.hypot(e.clientX - noteDrag.x, e.clientY - noteDrag.y) >= 8) noteDrag.moved = true; if (noteDrag.moved) { fab.style.top = `${Math.max(8, Math.min(innerHeight - 64, e.clientY - 28))}px`; fab.style.bottom = 'auto'; } }); fab.addEventListener('pointerup', (e) => { if (!noteDrag) return; const moved = noteDrag.moved; noteDrag = null; if (!moved) openShoppingNote(); else { const side = e.clientX < innerWidth / 2 ? 'left' : 'right'; const pct = Math.max(.08, Math.min(.9, e.clientY / innerHeight)); fab.style.top = `${pct * 100}%`; fab.style.bottom = 'auto'; fab.style[side] = '10px'; fab.style[side === 'left' ? 'right' : 'left'] = 'auto'; try { localStorage.setItem(NOTE_POS_STORAGE, JSON.stringify({ side, pct })); } catch (_) {} } }); try { const pos = JSON.parse(localStorage.getItem(NOTE_POS_STORAGE)); if (pos && (pos.side === 'left' || pos.side === 'right') && Number.isFinite(pos.pct)) { fab.style[pos.side] = '10px'; fab.style[pos.side === 'left' ? 'right' : 'left'] = 'auto'; fab.style.top = `${Math.max(.08, Math.min(.9, pos.pct)) * 100}%`; fab.style.bottom = 'auto'; } } catch (_) {} resetNoteIdle(); renderNoteFabVisibility(); }
+
 
 /* ============================================================
    IKON (SVG line, satu sumber kebenaran)
@@ -333,7 +359,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Pulihkan hitungan RPM dari sesi sebelumnya (timestamp >60s dibuang),
   // lalu refresh berkala supaya angkanya turun sendiri tanpa nunggu aksi user.
   loadReqTimes();
+  restoreShoppingNote();
   renderQuota();
+  initNoteFab();
   setInterval(renderQuota, 5000);
   // Pilih layar awal:
   // - User lama (punya bco_api_key) → migrasi senyap ke own_key, langsung
@@ -385,6 +413,11 @@ function wireEvents() {
   $('btn-add-item').addEventListener('click', openCamera);
   $('btn-manual').addEventListener('click', inputManual);
   $('btn-finish').addEventListener('click', finishShopping);
+  $('note-fab').addEventListener('click', openShoppingNote);
+  $('btn-note-add').addEventListener('click', () => { addShoppingNoteText($('note-input').value); $('note-input').value = ''; });
+  $('btn-note-clear').addEventListener('click', clearShoppingNote);
+  $('btn-note-keep').addEventListener('click', () => finalizeShopping('keep'));
+  $('btn-note-finish-clear').addEventListener('click', () => finalizeShopping('clear'));
   $('btn-settings').addEventListener('click', () => { renderQuota(); renderSettings(); openSheet('sheet-settings'); });
   const btnScanReport = $('btn-scan-report');
   if (btnScanReport) btnScanReport.addEventListener('click', () => {
@@ -470,7 +503,7 @@ function wireEvents() {
       // luar sheet (area gelap menutupi tombol histori/pengaturan di belakang).
       // Untuk membuang hasil, user menekan "Batal" secara eksplisit.
       if (bd.id === 'sheet-result') return;
-      bd.hidden = true;
+      bd.hidden = true; renderNoteFabVisibility();
     });
   });
 }
@@ -1304,7 +1337,7 @@ function finishShopping() {
 
   $('sum-count').textContent = cartUnits();
   $('sum-total').textContent = rupiah(cartTotal());
-  openSheet('sheet-summary');
+  maybeFinishWithNote();
 }
 
 function newShopping() {

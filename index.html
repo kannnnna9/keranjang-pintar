@@ -86,6 +86,8 @@
     </div>
   </section>
 
+  <button id="note-fab" class="note-fab" type="button" aria-label="Buka Catatan Belanja" hidden><span aria-hidden="true">☷</span><b id="note-badge" hidden></b></button>
+
   <!-- ============ HALAMAN RIWAYAT ============ -->
   <section id="screen-history" class="screen" hidden>
     <header class="topbar">
@@ -239,7 +241,7 @@
           <a class="btn btn-ghost" href="https://instagram.com/anciet.pey" target="_blank" rel="noopener noreferrer">Instagram</a>
         </div>
       </div>
-      <p class="version">Keranjang Pintar · <span id="app-version">v2.3.0</span> · BYOK lokal, Demo via proxy</p>
+      <p class="version">Keranjang Pintar · <span id="app-version">v2.4.0</span> · BYOK lokal, Demo via proxy</p>
     </div>
   </div>
 
@@ -289,6 +291,10 @@
       </div>
     </div>
   </div>
+
+  <div id="sheet-shopping-note" class="sheet-backdrop" hidden><div class="sheet sheet-tall shopping-note-sheet"><div class="sheet-head"><div><h3 class="sheet-title">Catatan Belanja</h3><p id="note-progress" class="settings-note"></p></div><button class="icon-btn" type="button" data-close="sheet-shopping-note" aria-label="Tutup">✕</button></div><ul id="note-list" class="note-list"></ul><p id="note-empty" class="empty note-empty">Belum ada catatan.</p><div class="note-input-row"><textarea id="note-input" class="inp note-input" rows="2" maxlength="8000" placeholder="Tempel atau ketik daftar belanja…"></textarea><button id="btn-note-add" class="btn btn-primary" type="button">Tambah</button></div><button id="btn-note-clear" class="btn btn-ghost btn-danger" type="button">Bersihkan catatan</button></div></div>
+  <div id="sheet-note-finish" class="sheet-backdrop" hidden><div class="sheet"><h3 class="sheet-title">Belum kebeli (<span id="note-finish-count">0</span>)</h3><p id="note-finish-items" class="settings-note"></p><div class="sheet-actions"><button id="btn-note-keep" class="btn btn-ghost" type="button">Simpan untuk belanja berikutnya</button><button id="btn-note-finish-clear" class="btn btn-primary" type="button">Bersihkan catatan</button></div></div></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <!-- ============ SHEET: DETAIL RIWAYAT ============ -->
   <div id="sheet-history-detail" class="sheet-backdrop" hidden>
