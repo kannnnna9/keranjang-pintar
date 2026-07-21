@@ -5,6 +5,11 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.4.2] - 2026-07-21
+
+### Diubah
+- Tombol Catatan Belanja kini tombol tetap yang mengambang di atas bar Anggaran (tidak lagi bisa digeser) — dibuka dengan satu ketuk biasa, jauh lebih gampang dipencet.
+
 ## [2.4.1] - 2026-07-21
 
 ### Diperbaiki

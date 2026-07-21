@@ -114,9 +114,8 @@ function getDemoDeviceId() {
 
 // Versi aplikasi. Satu sumber kebenaran: teks versi di halaman pengaturan
 // diisi dari sini saat init, jadi cukup ubah angka ini tiap rilis.
-const APP_VERSION = 'v2.4.1';
+const APP_VERSION = 'v2.4.2';
 const NOTE_STORAGE = 'kp_shopping_note';
-const NOTE_POS_STORAGE = 'kp_note_fab_pos';
 const NOTE_MAX_ITEMS = 100;
 const NOTE_MAX_TEXT = 80;
 
@@ -158,8 +157,6 @@ let sessionSaved = false; // true bila komposisi keranjang ini sudah masuk riway
 let budget = 0;         // anggaran sesi ini (Rp); 0 = belum diatur. Per sesi, reset saat belanja baru.
 let lastReconcile = null;
 let shoppingNote = { items: [], updatedAt: 0 };
-let noteDrag = null;
-let noteIdleTimer = null;
 
 /* ---------- Keranjang anti-hilang ----------
    Keranjang & anggaran sesi disimpan ke localStorage tiap kali berubah,
@@ -216,54 +213,10 @@ function openShoppingNote() { renderShoppingNote(); openSheet('sheet-shopping-no
 function finalizeShopping(noteAction) { shoppingNote.items = noteAction === 'keep' ? shoppingNote.items.filter((it) => !it.checked).map((it) => ({ ...it, checked: false })) : []; persistShoppingNote(); renderShoppingNote(); closeSheet('sheet-note-finish'); openSheet('sheet-summary'); }
 function maybeFinishWithNote() { if (shoppingNote.items.length && noteRemaining()) { $('note-finish-count').textContent = noteRemaining(); $('note-finish-items').textContent = shoppingNote.items.filter((it) => !it.checked).map((it) => it.text).join(', '); openSheet('sheet-note-finish'); } else { shoppingNote.items = []; persistShoppingNote(); openSheet('sheet-summary'); } }
 function renderNoteFabVisibility() { const fab = $('note-fab'); if (!fab) return; const dashboard = !$('screen-dashboard').hidden; const anySheet = [...document.querySelectorAll('.sheet-backdrop')].some((el) => !el.hidden); fab.hidden = !dashboard || anySheet; }
-function resetNoteIdle() { const fab = $('note-fab'); if (!fab) return; fab.classList.remove('note-idle'); clearTimeout(noteIdleTimer); noteIdleTimer = setTimeout(() => fab.classList.add('note-idle'), 3000); }
 function initNoteFab() {
   const fab = $('note-fab');
   if (!fab) return;
-  const MOVE_SLOP = 14;
-
-  function endInteraction(e, cancelled) {
-    if (!noteDrag) return;
-    const moved = noteDrag.moved;
-    noteDrag = null;
-    try { fab.releasePointerCapture(e.pointerId); } catch (_) {}
-    if (cancelled) return;
-    if (!moved) { openShoppingNote(); return; }
-    const side = e.clientX < innerWidth / 2 ? 'left' : 'right';
-    const pct = Math.max(.08, Math.min(.9, e.clientY / innerHeight));
-    fab.style.top = `${pct * 100}%`;
-    fab.style.bottom = 'auto';
-    fab.style[side] = '10px';
-    fab.style[side === 'left' ? 'right' : 'left'] = 'auto';
-    try { localStorage.setItem(NOTE_POS_STORAGE, JSON.stringify({ side, pct })); } catch (_) {}
-  }
-
-  fab.addEventListener('pointerdown', (e) => {
-    resetNoteIdle();
-    noteDrag = { x: e.clientX, y: e.clientY, moved: false };
-    try { fab.setPointerCapture(e.pointerId); } catch (_) {}
-  });
-  fab.addEventListener('pointermove', (e) => {
-    if (!noteDrag) return;
-    if (Math.hypot(e.clientX - noteDrag.x, e.clientY - noteDrag.y) >= MOVE_SLOP) noteDrag.moved = true;
-    if (noteDrag.moved) {
-      fab.style.top = `${Math.max(8, Math.min(innerHeight - 64, e.clientY - 28))}px`;
-      fab.style.bottom = 'auto';
-    }
-  });
-  fab.addEventListener('pointerup', (e) => endInteraction(e, false));
-  fab.addEventListener('pointercancel', (e) => endInteraction(e, true));
-
-  try {
-    const pos = JSON.parse(localStorage.getItem(NOTE_POS_STORAGE));
-    if (pos && (pos.side === 'left' || pos.side === 'right') && Number.isFinite(pos.pct)) {
-      fab.style[pos.side] = '10px';
-      fab.style[pos.side === 'left' ? 'right' : 'left'] = 'auto';
-      fab.style.top = `${Math.max(.08, Math.min(.9, pos.pct)) * 100}%`;
-      fab.style.bottom = 'auto';
-    }
-  } catch (_) {}
-  resetNoteIdle();
+  fab.addEventListener('click', openShoppingNote);
   renderNoteFabVisibility();
 }
 
