@@ -360,6 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // lalu refresh berkala supaya angkanya turun sendiri tanpa nunggu aksi user.
   loadReqTimes();
   restoreShoppingNote();
+  renderShoppingNote();
   renderQuota();
   initNoteFab();
   setInterval(renderQuota, 5000);
@@ -413,7 +414,6 @@ function wireEvents() {
   $('btn-add-item').addEventListener('click', openCamera);
   $('btn-manual').addEventListener('click', inputManual);
   $('btn-finish').addEventListener('click', finishShopping);
-  $('note-fab').addEventListener('click', openShoppingNote);
   $('btn-note-add').addEventListener('click', () => { addShoppingNoteText($('note-input').value); $('note-input').value = ''; });
   $('btn-note-clear').addEventListener('click', clearShoppingNote);
   $('btn-note-keep').addEventListener('click', () => finalizeShopping('keep'));
@@ -503,6 +503,7 @@ function wireEvents() {
       // luar sheet (area gelap menutupi tombol histori/pengaturan di belakang).
       // Untuk membuang hasil, user menekan "Batal" secara eksplisit.
       if (bd.id === 'sheet-result') return;
+      if (bd.id === 'sheet-note-finish') return;
       bd.hidden = true; renderNoteFabVisibility();
     });
   });
