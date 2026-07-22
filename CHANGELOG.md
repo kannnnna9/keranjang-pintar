@@ -5,6 +5,14 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.5.0] - 2026-07-22
+
+### Ditingkatkan
+- Layar Cocokkan Struk dirapikan (baris sejajar, isi bisa digulir) dan diberi tombol tutup jelas (✕ dan Selesai) yang kembali ke dashboard.
+
+### Ditambahkan
+- Hasil cocokkan struk kini tersimpan di Riwayat Belanja (panel "Hasil cek struk", hanya-lihat) — tak perlu mencocokkan ulang, tetap ada walau foto sudah kedaluwarsa.
+
 ## [2.4.3] - 2026-07-22
 
 ### Diperbaiki
