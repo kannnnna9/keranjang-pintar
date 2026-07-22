@@ -794,24 +794,30 @@ body {
 .note-fab {
   position: absolute;
   right: 16px;
-  top: 0;
-  transform: translateY(-50%);
-  height: 48px;
-  padding: 0 18px;
+  bottom: calc(100% + 12px);
+  width: 56px;
+  height: 56px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   border: 1px solid var(--accent);
-  border-radius: 24px;
+  border-radius: 50%;
   background: var(--accent);
   color: #1a1025;
   box-shadow: var(--shadow);
-  font-size: 15px;
-  font-weight: 600;
   cursor: pointer;
   z-index: 5;
+  opacity: 1;
+  transition: opacity .25s ease;
 }
-.note-fab b { position: absolute; top: -3px; right: -3px; min-width: 21px; height: 21px; padding: 2px 5px; border-radius: 11px; background: var(--card); color: var(--text); border: 1px solid var(--accent); font-size: 12px; line-height: 16px; }
+.note-fab .ic { width: 24px; height: 24px; }
+.note-fab.is-idle { opacity: .45; }
+.note-fab b {
+  position: absolute; top: -3px; right: -3px; min-width: 21px; height: 21px;
+  padding: 2px 5px; border-radius: 11px; background: var(--card); color: var(--text);
+  border: 1px solid var(--accent); font-size: 12px; line-height: 16px; text-align: center;
+}
 .note-list { list-style: none; overflow-y: auto; flex: 1; margin: 10px 0 14px; }
 .note-item { display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid var(--border); }
 .note-row { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 44px; border: 0; background: none; color: var(--text); text-align: left; font-size: 16px; cursor: pointer; }

@@ -5,6 +5,13 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.4.3] - 2026-07-22
+
+### Diperbaiki
+- Tombol Catatan tidak lagi menutupi angka Total/anggaran (kini tombol bulat melayang di atas footer, sisi kanan).
+- Tombol Catatan dibuat statis (drag dihapus) agar tap tidak lagi salah-pencet.
+- Ikon Catatan diganti jadi buku + pensil bergaya sama dengan ikon lain.
+
 ## [2.4.2] - 2026-07-21
 
 ### Diubah

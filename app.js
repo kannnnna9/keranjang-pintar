@@ -114,7 +114,7 @@ function getDemoDeviceId() {
 
 // Versi aplikasi. Satu sumber kebenaran: teks versi di halaman pengaturan
 // diisi dari sini saat init, jadi cukup ubah angka ini tiap rilis.
-const APP_VERSION = 'v2.4.2';
+const APP_VERSION = 'v2.4.3';
 const NOTE_STORAGE = 'kp_shopping_note';
 const NOTE_MAX_ITEMS = 100;
 const NOTE_MAX_TEXT = 80;
@@ -212,11 +212,23 @@ function clearShoppingNote() { if (!shoppingNote.items.length || confirm('Bersih
 function openShoppingNote() { renderShoppingNote(); openSheet('sheet-shopping-note'); }
 function finalizeShopping(noteAction) { shoppingNote.items = noteAction === 'keep' ? shoppingNote.items.filter((it) => !it.checked).map((it) => ({ ...it, checked: false })) : []; persistShoppingNote(); renderShoppingNote(); closeSheet('sheet-note-finish'); openSheet('sheet-summary'); }
 function maybeFinishWithNote() { if (shoppingNote.items.length && noteRemaining()) { $('note-finish-count').textContent = noteRemaining(); $('note-finish-items').textContent = shoppingNote.items.filter((it) => !it.checked).map((it) => it.text).join(', '); openSheet('sheet-note-finish'); } else { shoppingNote.items = []; persistShoppingNote(); openSheet('sheet-summary'); } }
-function renderNoteFabVisibility() { const fab = $('note-fab'); if (!fab) return; const dashboard = !$('screen-dashboard').hidden; const anySheet = [...document.querySelectorAll('.sheet-backdrop')].some((el) => !el.hidden); fab.hidden = !dashboard || anySheet; }
+function renderNoteFabVisibility() { const fab = $('note-fab'); if (!fab) return; const dashboard = !$('screen-dashboard').hidden; const anySheet = [...document.querySelectorAll('.sheet-backdrop')].some((el) => !el.hidden); fab.hidden = !dashboard || anySheet; if (!fab.hidden && typeof armNoteIdle === 'function') armNoteIdle(); }
+let noteIdleTimer = null;
+function armNoteIdle() {
+  const fab = $('note-fab');
+  if (!fab || fab.hidden) return;
+  fab.classList.remove('is-idle');
+  clearTimeout(noteIdleTimer);
+  noteIdleTimer = setTimeout(() => fab.classList.add('is-idle'), 3000);
+}
 function initNoteFab() {
   const fab = $('note-fab');
   if (!fab) return;
-  fab.addEventListener('click', openShoppingNote);
+  fab.addEventListener('click', () => { openShoppingNote(); armNoteIdle(); });
+  const list = $('cart-list');
+  if (list) list.addEventListener('scroll', armNoteIdle, { passive: true });
+  document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.sheet') && !e.target.closest('.screen-camera')) armNoteIdle(); }, { passive: true });
+  localStorage.removeItem('kp_note_fab_pos');
   renderNoteFabVisibility();
 }
 
@@ -242,6 +254,7 @@ const ICONS = {
   tag:      '<path d="M3 7v4.7a2 2 0 0 0 .6 1.4l7.6 7.6a2 2 0 0 0 2.8 0l5.3-5.3a2 2 0 0 0 0-2.8L11.7 5a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2Z"/><circle cx="7.5" cy="7.5" r="1.3"/>',
   cart:     '<circle cx="9.5" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2.5 3.5H5l2.3 11.4a1.6 1.6 0 0 0 1.6 1.3h8.5a1.6 1.6 0 0 0 1.6-1.3L21.5 7.5H6"/>',
   receipt:  '<path d="M5 3.5v17l2-1 2 1 2-1 2 1 2-1 2 1v-17l-2 1-2-1-2 1-2-1-2 1Z"/><path d="M9 8.5h6M9 12.5h6"/>',
+  'note-edit': '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.5"/><path d="M8 8.5h5"/><path d="M8 12.5h4"/><path d="M8 16.5h6"/><path d="M17.6 2.6a1.9 1.9 0 0 1 2.8 2.8l-5.8 5.8-3.2.4.4-3.2Z"/>',
 };
 function svgIcon(name, size = 20) {
   return `<svg class="ic" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
