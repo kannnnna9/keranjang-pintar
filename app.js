@@ -1459,6 +1459,18 @@ function renderReconcile(result) {
   wireReconcileButtons();
 }
 
+function buildReconcileSnapshot(rows, now) {
+  const list = Array.isArray(rows) ? rows : [];
+  let totalRak = 0, totalKasir = 0;
+  const slim = list.map((r) => {
+    const hargaRak = r.hargaRak || 0;
+    const hargaKasir = (r.hargaKasir === null || r.hargaKasir === undefined) ? null : r.hargaKasir;
+    totalRak += hargaRak;
+    totalKasir += (hargaKasir === null ? hargaRak : hargaKasir);
+    return { nama: r.nama, hargaRak, hargaKasir, status: r.status };
+  });
+  return { at: now, totalRak, totalKasir, selisih: totalKasir - totalRak, rows: slim };
+}
 function wireReconcileButtons() {
   $('reconcile-body').querySelectorAll('.rc-foto').forEach((button) => button.addEventListener('click', () => openPhoto(button.dataset.id)));
   $('reconcile-body').querySelectorAll('.rc-bukti').forEach((button) => button.addEventListener('click', () => markEvidence(button.dataset.id, button)));
