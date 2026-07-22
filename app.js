@@ -1644,8 +1644,27 @@ async function showHistoryDetail(i) {
   $('hist-detail-title').textContent = fmtDate(sesi.ts);
   $('hist-detail-count').textContent = sesi.items.reduce((s, it) => s + itemQty(it), 0);
   $('hist-detail-total').textContent = rupiah(sesi.total);
-  $('btn-share-hist').dataset.index = i; // ingat sesi mana untuk tombol Bagikan
-  $('btn-del-hist').dataset.index = i;   // …dan untuk tombol Hapus
+  $('btn-share-hist').dataset.index = i;
+  $('btn-del-hist').dataset.index = i;
+
+  const rcBox = $('hist-detail-reconcile');
+  rcBox.hidden = true; rcBox.innerHTML = '';
+  try {
+    const rc = sesi.reconcile;
+    if (rc && Array.isArray(rc.rows)) {
+      const beda = rc.rows.filter((r) => r.status === 'beda');
+      const sama = rc.rows.filter((r) => r.status === 'sama');
+      const nf = rc.rows.filter((r) => r.status === 'tak_ketemu');
+      const bedaTxt = beda.map((r) => `${r.nama} ${rupiah((r.hargaKasir || 0) - r.hargaRak)}`).join(' · ');
+      rcBox.innerHTML =
+        `<div class="hist-reconcile-head">Hasil cek struk</div>` +
+        `<div>Rak ${rupiah(rc.totalRak)} → Kasir ${rupiah(rc.totalKasir)} · <span class="${rc.selisih > 0 ? 'rc-diff' : ''}">Selisih ${rupiah(rc.selisih)}</span></div>` +
+        (beda.length ? `<div>⚠ Beda (${beda.length}): ${bedaTxt}</div>` : '') +
+        `<div>✓ Sesuai (${sama.length})${nf.length ? ` · ? Tak terdeteksi (${nf.length})` : ''}</div>`;
+      rcBox.hidden = false;
+    }
+  } catch (_) { rcBox.hidden = true; }
+
   openSheet('sheet-history-detail');
 }
 

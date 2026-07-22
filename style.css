@@ -65,6 +65,13 @@ body {
 .rc-foto, .rc-bukti, .rc-manual { background: none; border: 1px solid var(--border); color: var(--accent); border-radius: var(--radius-sm); padding: 4px 10px; min-height: 44px; cursor: pointer; }
 .rc-foto:hover, .rc-bukti:hover, .rc-manual:hover { border-color: var(--accent); color: var(--accent-hov); }
 .rc-collapse { max-height: 40vh; overflow-y: auto; }
+.hist-reconcile {
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: .92em; color: var(--text-dim);
+}
+.hist-reconcile-head { font-weight: 600; color: var(--text); }
 .photo-full { width: 100%; border-radius: var(--radius-sm); }
 .hist-foto { background: none; border: 1px solid var(--border); color: var(--accent); margin-left: 8px; min-height: 44px; min-width: 44px; border-radius: var(--radius-sm); cursor: pointer; }
 .hist-foto:hover { border-color: var(--accent); color: var(--accent-hov); }
