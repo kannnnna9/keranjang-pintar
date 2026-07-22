@@ -190,13 +190,15 @@
   <!-- ============ HALAMAN REKONSILIASI ============ -->
   <section id="screen-reconcile" class="screen" hidden>
     <header class="topbar">
-      <button id="btn-reconcile-back" class="icon-btn" type="button" aria-label="Kembali">←</button>
       <h2 class="topbar-title">Cocokkan Struk</h2>
-      <span class="topbar-spacer"></span>
+      <button id="btn-reconcile-close" class="icon-btn" type="button" data-icon="close" aria-label="Tutup"></button>
     </header>
     <div id="reconcile-summary" class="reconcile-summary"></div>
-    <div id="reconcile-body"></div>
+    <div id="reconcile-body" class="reconcile-body"></div>
     <p id="reconcile-error" class="err" hidden></p>
+    <div class="reconcile-foot">
+      <button id="btn-reconcile-done" class="btn btn-primary" type="button">Selesai</button>
+    </div>
   </section>
 
   <div id="sheet-photo" class="sheet-backdrop" hidden>

@@ -253,6 +253,7 @@ const ICONS = {
   timer:    '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.4 1.4"/><path d="M9.5 2.5h5"/>',
   tag:      '<path d="M3 7v4.7a2 2 0 0 0 .6 1.4l7.6 7.6a2 2 0 0 0 2.8 0l5.3-5.3a2 2 0 0 0 0-2.8L11.7 5a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2Z"/><circle cx="7.5" cy="7.5" r="1.3"/>',
   cart:     '<circle cx="9.5" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2.5 3.5H5l2.3 11.4a1.6 1.6 0 0 0 1.6 1.3h8.5a1.6 1.6 0 0 0 1.6-1.3L21.5 7.5H6"/>',
+  close:    '<path d="M6 6l12 12M18 6 6 18"/>',
   receipt:  '<path d="M5 3.5v17l2-1 2 1 2-1 2 1 2-1 2 1v-17l-2 1-2-1-2 1-2-1-2 1Z"/><path d="M9 8.5h6M9 12.5h6"/>',
   'note-edit': '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.5"/><path d="M8 8.5h5"/><path d="M8 12.5h4"/><path d="M8 16.5h6"/><path d="M17.6 2.6a1.9 1.9 0 0 1 2.8 2.8l-5.8 5.8-3.2.4.4-3.2Z"/>',
 };
@@ -465,7 +466,8 @@ function wireEvents() {
   $('btn-share-summary').addEventListener('click', shareSummary);
   $('btn-reconcile').addEventListener('click', onReconcileClick);
   $('receipt-file').addEventListener('change', onReceiptPicked);
-  $('btn-reconcile-back').addEventListener('click', enterDashboard);
+  $('btn-reconcile-close').addEventListener('click', enterDashboard);
+  $('btn-reconcile-done').addEventListener('click', enterDashboard);
   $('btn-photo-close').addEventListener('click', () => closeSheet('sheet-photo'));
 
   // Edit item keranjang
@@ -1446,11 +1448,11 @@ function renderReconcile(result) {
     const photoId = photoIdByNama(row.nama);
     return `<li class="rc-row rc-beda"><span class="rc-nama">${row.nama}</span>` +
       `<span class="rc-price">Rak ${rupiah(row.hargaRak)} → Kasir ${rupiah(row.hargaKasir)} (${rupiah(row.hargaKasir - row.hargaRak)})</span>` +
-      (photoId ? `<button class="rc-foto" data-id="${photoId}" type="button">Foto</button><button class="rc-bukti" data-id="${photoId}" type="button">Bukti</button>` : '') +
+      (photoId ? `<span class="rc-actions"><button class="rc-foto" data-id="${photoId}" type="button">Foto</button><button class="rc-bukti" data-id="${photoId}" type="button">Bukti</button></span>` : '') +
       '</li>';
   };
   const rowSame = (row) => `<li class="rc-row"><span class="rc-nama">${row.nama}</span><span class="rc-price">${rupiah(row.hargaKasir || row.hargaRak)} ✓</span></li>`;
-  const rowNotFound = (row) => `<li class="rc-row rc-nf"><span class="rc-nama">${row.nama}</span><span class="rc-price">Rak ${rupiah(row.hargaRak)}</span><button class="rc-manual" data-nama="${row.nama}" type="button">Cocokkan manual</button></li>`;
+  const rowNotFound = (row) => `<li class="rc-row rc-nf"><span class="rc-nama">${row.nama}</span><span class="rc-price">Rak ${rupiah(row.hargaRak)}</span><span class="rc-actions"><button class="rc-manual" data-nama="${row.nama}" type="button">Cocokkan manual</button></span></li>`;
   let html = '';
   if (beda.length) html += `<h3>Beda harga (${beda.length})</h3><ul class="rc-list">${beda.map(rowDiff).join('')}</ul>`;
   if (notFound.length) html += `<h3>Tak terdeteksi (${notFound.length})</h3><ul class="rc-list">${notFound.map(rowNotFound).join('')}</ul>`;
