@@ -1540,6 +1540,7 @@ function recordSession() {
   const list = loadHistory();
   list.unshift({
     ts: Date.now(),
+    sessionId: cartSessionId,
     total: cartTotal(),
     items: cart.map((it) => ({ nama: it.nama, harga: it.harga, qty: itemQty(it) })),
   });
