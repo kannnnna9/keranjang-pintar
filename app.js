@@ -1457,6 +1457,21 @@ function renderReconcile(result) {
   if (sama.length) html += `<h3>Sesuai (${sama.length})</h3><button id="btn-del-same" class="btn btn-ghost" type="button">Hapus semua foto sesuai</button><ul class="rc-list rc-collapse">${sama.map(rowSame).join('')}</ul>`;
   $('reconcile-body').innerHTML = html || '<p class="muted">Tidak ada hasil rekonsiliasi.</p>';
   wireReconcileButtons();
+  saveReconcileToHistory(result);
+}
+
+function saveReconcileToHistory(rows) {
+  try {
+    const snapshot = buildReconcileSnapshot(rows, Date.now());
+    const list = loadHistory();
+    if (!list.length) return;
+    let entry = list.find((e) => e.sessionId && e.sessionId === cartSessionId);
+    if (!entry) entry = list[0];
+    entry.reconcile = snapshot;
+    localStorage.setItem(HISTORY_STORAGE, JSON.stringify(list));
+  } catch (_) {
+    showToast('Hasil mungkin tak tersimpan');
+  }
 }
 
 function buildReconcileSnapshot(rows, now) {
