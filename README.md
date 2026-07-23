@@ -99,3 +99,7 @@ Model AI-nya diatur di konstanta `MODEL` paling atas `app.js`. Sekarang isinya `
 ## Privasi
 
 Mode Demo mengirim foto label ke proxy Keranjang Pintar terlebih dulu agar API key demo tetap aman di server. Proxy hanya meneruskan gambar ke Google Gemini untuk membaca nama dan harga, tidak menyimpan foto. Kalau kamu memakai API key sendiri, key tetap disimpan di browsermu dan request berjalan langsung ke Google Gemini.
+
+---
+
+Proyek ini didukung kredit LLM dari **vsLLM**. Kalau kamu mau daftar, boleh lewat link referralku: https://vsllm.com/i/5xdk
