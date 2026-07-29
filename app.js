@@ -1046,7 +1046,77 @@ function normalizePromo(raw) {
 }
 
 function promoChips(norm) {
-  return [];
+  if (!norm || norm.kandidat.aktif) return [];
+
+  if (norm.tipe === 'member') {
+    return [
+      {
+        label: `Member ${rupiah(norm.hargaPromo)}`,
+        harga: norm.hargaPromo,
+        lockQty: false,
+        promo: { tipe: 'member', label: 'Member', hargaNormal: norm.hargaNormal || null },
+      },
+      {
+        label: `Non-member ${rupiah(norm.hargaNormal)}`,
+        harga: norm.hargaNormal,
+        lockQty: false,
+        promo: null,
+      },
+    ];
+  }
+
+  // Untuk bulk & gratis, norm.hargaNormal bermakna HARGA SATUAN (bukan harga coret).
+  // Coretan di baris keranjang harus memakai harga tanpa promo untuk jumlah item
+  // yang sama, yaitu qtyPaket x satuan — kalau tidak, coretan malah terbaca
+  // seperti harga naik.
+  if (norm.tipe === 'bulk') {
+    const label = `Paket ${norm.promoQty} item`;
+    const chips = [{
+      label: `${label} ${rupiah(norm.hargaPromo)}`,
+      harga: norm.hargaPromo,
+      lockQty: true,
+      promo: {
+        tipe: 'bulk',
+        qtyPaket: norm.promoQty,
+        label,
+        hargaNormal: norm.hargaNormal > 0 ? norm.promoQty * norm.hargaNormal : null,
+      },
+    }];
+    if (norm.hargaNormal > 0) {
+      chips.push({
+        label: `Satuan ${rupiah(norm.hargaNormal)}`,
+        harga: norm.hargaNormal,
+        lockQty: false,
+        promo: null,
+      });
+    }
+    return chips;
+  }
+
+  if (norm.tipe === 'gratis') {
+    const label = `Beli ${norm.beliQty} gratis ${norm.gratisQty}`;
+    return [
+      {
+        label: `${label} · ${rupiah(norm.hargaPaket)} (${norm.totalItem} item)`,
+        harga: norm.hargaPaket,
+        lockQty: true,
+        promo: {
+          tipe: 'gratis',
+          qtyPaket: norm.totalItem,
+          label: `${label} · ${norm.totalItem} item`,
+          hargaNormal: norm.totalItem * norm.hargaNormal,
+        },
+      },
+      {
+        label: `Satuan ${rupiah(norm.hargaNormal)}`,
+        harga: norm.hargaNormal,
+        lockQty: false,
+        promo: null,
+      },
+    ];
+  }
+
+  return []; // none & diskon: harga sudah terisi otomatis, tak perlu chip
 }
 /* ==== PROMO RULES (end) ==== */
 

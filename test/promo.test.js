@@ -72,3 +72,70 @@ test('syarat dipotong 120 karakter dan labelWarna asing jadi lain', () => {
   assert.strictEqual(norm.syarat.length, 120);
   assert.strictEqual(norm.labelWarna, 'lain');
 });
+
+test('chip member: harga member + non-member, qty tidak dikunci', () => {
+  const norm = normalizePromo({
+    nama: 'Keju', harga: 33000, promoTipe: 'member', syarat: 'Khusus Member AlfaGift',
+    hargaPromo: 33000, hargaNormal: 39000, semuaHarga: [33000, 39000],
+  });
+  const chips = promoChips(norm);
+  assert.strictEqual(chips.length, 2);
+  assert.strictEqual(chips[0].label, 'Member Rp33000');
+  assert.strictEqual(chips[0].harga, 33000);
+  assert.strictEqual(chips[0].lockQty, false);
+  assert.deepStrictEqual(chips[0].promo, { tipe: 'member', label: 'Member', hargaNormal: 39000 });
+  assert.strictEqual(chips[1].label, 'Non-member Rp39000');
+  assert.strictEqual(chips[1].harga, 39000);
+  assert.strictEqual(chips[1].promo, null);
+});
+
+test('chip bulk: coretan pakai harga tanpa promo untuk jumlah item yang sama', () => {
+  const norm = normalizePromo({
+    nama: 'Sabun', harga: 1500, promoTipe: 'bulk', promoQty: 3,
+    hargaPromo: 4000, hargaNormal: 1500, semuaHarga: [1500, 4000],
+  });
+  const chips = promoChips(norm);
+  assert.strictEqual(chips.length, 2);
+  assert.strictEqual(chips[0].label, 'Paket 3 item Rp4000');
+  assert.strictEqual(chips[0].harga, 4000);
+  assert.strictEqual(chips[0].lockQty, true);
+  assert.deepStrictEqual(chips[0].promo, { tipe: 'bulk', qtyPaket: 3, label: 'Paket 3 item', hargaNormal: 4500 });
+  assert.strictEqual(chips[1].label, 'Satuan Rp1500');
+});
+
+test('chip bulk tanpa harga satuan: hanya satu chip, tanpa coretan', () => {
+  const norm = normalizePromo({
+    nama: 'Mi', harga: 10000, promoTipe: 'bulk', promoQty: 3,
+    hargaPromo: 10000, hargaNormal: 0, semuaHarga: [10000],
+  });
+  const chips = promoChips(norm);
+  assert.strictEqual(chips.length, 1);
+  assert.strictEqual(chips[0].promo.hargaNormal, null);
+});
+
+test('chip gratis: harga paket hasil hitung, badge menyebut total item', () => {
+  const norm = normalizePromo({
+    nama: 'Teh Kotak', harga: 10000, promoTipe: 'gratis', beliQty: 2, gratisQty: 1,
+    hargaNormal: 10000, syarat: 'Beli 2 Gratis 1', semuaHarga: [10000],
+  });
+  const chips = promoChips(norm);
+  assert.strictEqual(chips.length, 2);
+  assert.strictEqual(chips[0].label, 'Beli 2 gratis 1 · Rp20000 (3 item)');
+  assert.strictEqual(chips[0].harga, 20000);
+  assert.strictEqual(chips[0].lockQty, true);
+  assert.deepStrictEqual(chips[0].promo, {
+    tipe: 'gratis', qtyPaket: 3, label: 'Beli 2 gratis 1 · 3 item', hargaNormal: 30000,
+  });
+  assert.strictEqual(chips[1].harga, 10000);
+  assert.strictEqual(chips[1].promo, null);
+});
+
+test('tipe none dan diskon tak punya chip; kandidat aktif juga tidak', () => {
+  const none = normalizePromo({ nama: 'A', harga: 5000, promoTipe: 'none' });
+  assert.deepStrictEqual(promoChips(none), []);
+  const kandidat = normalizePromo({
+    nama: 'B', harga: 5000, promoTipe: 'bulk', promoQty: 1, hargaPromo: 5000,
+  });
+  assert.strictEqual(kandidat.kandidat.aktif, true);
+  assert.deepStrictEqual(promoChips(kandidat), []);
+});
