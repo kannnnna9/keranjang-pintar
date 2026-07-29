@@ -505,6 +505,7 @@ function wireEvents() {
 
   // Hasil scan / input manual
   $('btn-add').addEventListener('click', addToCart);
+  $('res-harga').addEventListener('input', syncAddEnabled);
   $('btn-retry').addEventListener('click', retryScan);
 
   // Ringkasan
@@ -1176,38 +1177,110 @@ function showResult(nama, harga, title, promoInfo) {
   openSheet('sheet-result');
 }
 
-// Tampilkan chip pilihan harga bila label promo terdeteksi. Sebelum user
-// tap chip: harga & qty dikosongkan/dikunci sesuai tipe, tombol Tambah nonaktif.
-function renderPromoPicker(info) {
+// Render zona promo di sheet hasil dari hasil normalizePromo.
+// Fungsi ini sengaja hanya menggambar — semua keputusan sudah diambil di
+// normalizePromo/promoChips supaya bisa diuji tanpa DOM.
+function renderPromoPicker(norm) {
   pendingPromo = null;
   const box = $('res-promo');
   const note = $('promo-note');
-  const qtyInp = $('res-qty');
-  qtyInp.disabled = false;
+  const syaratEl = $('promo-syarat');
+  const warnEl = $('promo-warn');
+  const altBtn = $('btn-promo-alt');
+
+  // Bersihkan semua zona dulu; tiap cabang di bawah menyalakan yang perlu saja.
+  box.hidden = true;
   note.hidden = true;
-  if (!info || info.promoTipe === 'none') { box.hidden = true; setAddEnabled(true); return; }
+  syaratEl.hidden = true;
+  warnEl.hidden = true;
+  altBtn.hidden = true;
+  $('promo-alt').hidden = true;
+  $('promo-b').hidden = false;
+  $('res-qty').disabled = false;
 
-  const a = $('promo-a');
-  const b = $('promo-b');
-  box.hidden = false;
-  setAddEnabled(false); // paksa pilih sadar
-  $('res-harga').value = '';
+  if (!norm) { syncAddEnabled(); return; }
 
-  if (info.promoTipe === 'member') {
-    a.textContent = `Member ${rupiah(info.hargaPromo)}`;
-    b.textContent = `Non-member ${rupiah(info.hargaNormal)}`;
-    a.onclick = () => pickPromo(info.hargaPromo, false,
-      { tipe: 'member', label: 'Member', hargaNormal: info.hargaNormal || null });
-    b.onclick = () => pickPromo(info.hargaNormal, false, null);
-  } else { // bulk
-    const n = info.promoQty || 0;
-    const lbl = n > 0 ? `Paket ${n} item` : 'Paket';
-    a.textContent = `${lbl} ${rupiah(info.hargaPromo)}`;
-    b.textContent = `Satuan ${rupiah(info.hargaNormal)}`;
-    a.onclick = () => pickPromo(info.hargaPromo, true,
-      { tipe: 'bulk', qtyPaket: n, label: lbl, hargaNormal: info.hargaNormal || null });
-    b.onclick = () => pickPromo(info.hargaNormal, false, null);
+  // Kutipan syarat apa adanya: sekali lihat, user tahu AI salah baca atau tidak.
+  if (norm.syarat) {
+    syaratEl.textContent = `dibaca: "${norm.syarat}"`;
+    syaratEl.hidden = false;
   }
+
+  // Hasil kontradiktif → langsung tawarkan kandidat harga, jangan menebak.
+  if (norm.kandidat.aktif) {
+    warnEl.textContent = norm.kandidat.alasan;
+    warnEl.hidden = false;
+    openKandidat(norm);
+    syncAddEnabled();
+    return;
+  }
+
+  if (norm.peringatan) {
+    warnEl.textContent = norm.peringatan;
+    warnEl.hidden = false;
+  }
+
+  // Jalan keluar manual: selalu ada selama AI membaca lebih dari satu harga.
+  if (norm.semuaHarga.length >= 2) {
+    altBtn.hidden = false;
+    altBtn.onclick = () => openKandidat(norm);
+  }
+
+  // Diskon polos tak bersyarat → harga sudah diisi showResult, tak perlu tanya.
+  if (norm.promoDefault) {
+    pendingPromo = norm.promoDefault;
+    if (norm.hargaNormal > 0) {
+      const hemat = norm.hargaNormal - norm.hargaPromo;
+      note.innerHTML = `<span class="ci-strike">${rupiah(norm.hargaNormal)}</span> `
+        + `<span>${rupiah(norm.hargaPromo)} · hemat ${rupiah(hemat)}</span>`;
+      note.hidden = false;
+    }
+  }
+
+  // Promo bersyarat / berubah-jumlah → user memilih sadar, harga dikosongkan.
+  const chips = promoChips(norm);
+  if (chips.length) {
+    box.hidden = false;
+    $('res-harga').value = '';
+    bindPromoChip($('promo-a'), chips[0]);
+    if (chips[1]) bindPromoChip($('promo-b'), chips[1]);
+    else $('promo-b').hidden = true;
+  }
+  syncAddEnabled();
+}
+
+function bindPromoChip(btn, chip) {
+  btn.textContent = chip.label;
+  btn.onclick = () => pickPromo(chip.harga, chip.lockQty, chip.promo);
+}
+
+// Zona kandidat: tampilkan semua harga yang terbaca AI, user tap yang benar.
+// Memilih di sini selalu membuang jejak promo — kita tak tahu harga itu milik
+// skema promo yang mana.
+function openKandidat(norm) {
+  const wrap = $('promo-alt-chips');
+  const list = norm.semuaHarga.length ? norm.semuaHarga : (norm.harga > 0 ? [norm.harga] : []);
+  wrap.innerHTML = '';
+  if (!list.length) {
+    wrap.textContent = 'Harga tak terbaca — isi manual.';
+  } else {
+    for (const h of list) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = rupiah(h);
+      b.onclick = () => pickPromo(h, false, null);
+      wrap.appendChild(b);
+    }
+  }
+  $('res-promo').hidden = true;
+  $('promo-note').hidden = true;
+  $('btn-promo-alt').hidden = true;
+  $('res-harga').value = '';
+  pendingPromo = null;
+  $('res-qty').disabled = false;
+  $('promo-alt').hidden = false;
+  syncAddEnabled();
 }
 
 // Chip dipilih: isi harga, kunci qty bila paket, simpan jejak promo.
@@ -1218,14 +1291,22 @@ function pickPromo(harga, lockQty, promo) {
   if (lockQty) {
     qtyInp.value = 1;
     qtyInp.disabled = true;
-    note.textContent = promo.qtyPaket > 0 ? `1 paket = ${promo.qtyPaket} item` : '1 paket';
+    note.textContent = promo && promo.qtyPaket > 0 ? `1 paket = ${promo.qtyPaket} item` : '1 paket';
     note.hidden = false;
   } else {
     qtyInp.disabled = false;
     note.hidden = true;
   }
   pendingPromo = promo;
-  setAddEnabled(true);
+  syncAddEnabled();
+}
+
+// Tombol Tambah mengikuti isi input harga, bukan "sudah tap chip atau belum".
+// Pemaksaan pilih sadar tetap jalan (input dikosongkan untuk promo bersyarat),
+// tapi user tak pernah terkunci saat AI gagal total — harga masih bisa diketik.
+function syncAddEnabled() {
+  const v = parseInt($('res-harga').value, 10);
+  setAddEnabled(!isNaN(v) && v > 0);
 }
 
 // Aktif/nonaktifkan tombol Tambah.
