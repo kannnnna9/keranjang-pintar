@@ -5,6 +5,21 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.6.0] - 2026-07-29
+
+### Diperbaiki
+- Label diskon biasa (harga coret + harga baru) tidak lagi salah dianggap promo member. Harga diskon langsung terisi, lengkap dengan harga coret dan jumlah hemat — tak perlu memilih apa pun.
+- Label "Beli 2 Gratis 1" kini dihitung benar: bayar 2× harga satuan untuk 3 item. Sebelumnya diperlakukan seperti paket borongan sehingga harganya salah.
+- Harga coret pada item paket kini menampilkan harga tanpa promo untuk jumlah item yang sama (mis. 3 × Rp1.500 = Rp4.500), bukan harga satuan yang membuat harga seolah naik.
+
+### Ditambahkan
+- Label berlatar kuning dikenali sebagai penanda promo: muncul peringatan bila mekanismenya tak terbaca, dan pilihan harga bila labelnya memuat beberapa harga.
+- Zona "Harga yang terbaca" — bila hasil scan meragukan atau ada beberapa harga di label, semua harga ditampilkan sebagai pilihan alih-alih app menebak.
+- Kutipan syarat promo yang dibaca app ditampilkan apa adanya (mis. `dibaca: "Khusus Member AlfaGift"`), supaya salah baca langsung kelihatan.
+
+### Diubah
+- Tombol "Tambah ke Keranjang" kini aktif begitu kolom harga terisi, jadi harga tetap bisa diketik manual walau scan gagal total.
+
 ## [2.5.0] - 2026-07-22
 
 ### Ditingkatkan
