@@ -942,6 +942,114 @@ async function reconcileReceipt(base64Struk, cartData) {
   }
 }
 
+/* ==== PROMO RULES (start) ==== */
+/* Sanitasi + seluruh aturan promo. Sengaja bebas DOM dan bebas dependensi
+   (kecuali `rupiah`) supaya bisa diuji di node:vm tanpa memanggil Gemini.
+   Prinsipnya: AI hanya melaporkan angka yang tertulis di label; semua
+   aritmatika dan semua keputusan terjadi di sini. */
+
+const PROMO_TIPE = ['none', 'diskon', 'member', 'bulk', 'gratis'];
+const LABEL_WARNA = ['kuning', 'merah', 'putih', 'lain'];
+// Klaim 'member' hanya sah kalau label benar-benar menuliskan syarat keanggotaan.
+// Tambah nama program loyalitas baru di sini bila muncul di lapangan.
+const SYARAT_MEMBER_RE = /member|kartu|alfagift|ponta|jakone|bonus\s*card|myvalue|klik\s*indomaret/i;
+const HARGA_MIN = 100;        // di bawah ini biasanya gram/ml/kode barang, bukan harga
+const HARGA_MAX = 10000000;
+const MAX_KANDIDAT = 6;
+
+const angka = (v) => {
+  const n = parseInt(String(v == null ? '' : v).replace(/\D/g, ''), 10);
+  return isNaN(n) ? 0 : n;
+};
+
+// Saring daftar harga mentah dari AI: buang yang mustahil jadi harga, buang
+// kembar, urut naik, batasi jumlah chip yang nanti ditampilkan.
+function bersihkanHarga(list) {
+  const out = [];
+  for (const v of Array.isArray(list) ? list : []) {
+    const n = angka(v);
+    if (n < HARGA_MIN || n > HARGA_MAX) continue;
+    if (!out.includes(n)) out.push(n);
+  }
+  return out.sort((a, b) => a - b).slice(0, MAX_KANDIDAT);
+}
+
+function normalizePromo(raw) {
+  const r = raw || {};
+  const nama = String(r.nama == null ? '' : r.nama).trim();
+  const harga = angka(r.harga);
+  const hargaPromo = angka(r.hargaPromo);
+  const hargaNormal = angka(r.hargaNormal);
+  const promoQty = angka(r.promoQty);
+  const beliQty = angka(r.beliQty);
+  const gratisQty = angka(r.gratisQty);
+  const syarat = String(r.syarat == null ? '' : r.syarat).trim().slice(0, 120);
+  const labelWarna = LABEL_WARNA.includes(r.labelWarna) ? r.labelWarna : 'lain';
+  const semuaHarga = bersihkanHarga(r.semuaHarga);
+
+  // Aturan 1 — klaim bersyarat wajib bawa bukti. Harga coret TIDAK berarti
+  // member; tanpa tulisan keanggotaan itu diskon biasa. Ini inti bug lapangan #1.
+  let tipe = PROMO_TIPE.includes(r.promoTipe) ? r.promoTipe : 'none';
+  if (tipe === 'member' && !SYARAT_MEMBER_RE.test(syarat)) tipe = 'diskon';
+
+  // Aturan 2 — aritmatika beli-gratis dihitung di sini, bukan oleh AI:
+  // bayar N satuan, terima N+M item. Inti bug lapangan #2.
+  const totalItem = tipe === 'gratis' ? beliQty + gratisQty : 0;
+  const hargaPaket = tipe === 'gratis' ? beliQty * hargaNormal : 0;
+
+  // Aturan 3 — hasil kontradiktif jangan ditebak. Cocok pertama menentukan alasan.
+  let alasan = '';
+  if (tipe === 'none' && labelWarna === 'kuning' && semuaHarga.length >= 2) {
+    // Dua sinyal bertemu: ada tanda promo (kuning) DAN ada beberapa harga.
+    // Label non-kuning berharga ganda TIDAK masuk sini — banyak label biasa
+    // memuat harga jual + harga per-100g yang dua-duanya sah.
+    alasan = 'Label kuning & beberapa harga — pilih yang benar';
+  } else if ((tipe === 'diskon' || tipe === 'member') && (hargaPromo <= 0 || hargaNormal <= 0)) {
+    alasan = 'Harga promo/normal tak lengkap';
+  } else if ((tipe === 'diskon' || tipe === 'member') && hargaPromo >= hargaNormal) {
+    alasan = 'Harga promo tak lebih murah';
+  } else if (tipe === 'bulk' && (promoQty < 2 || hargaPromo <= 0)) {
+    alasan = 'Data paket tak lengkap';
+  } else if (tipe === 'bulk' && hargaNormal > 0 && hargaPromo >= promoQty * hargaNormal) {
+    alasan = 'Harga paket tak lebih murah';
+  } else if (tipe === 'gratis' && (beliQty < 1 || gratisQty < 1 || hargaNormal <= 0)) {
+    alasan = 'Data beli-gratis tak lengkap';
+  }
+
+  const out = {
+    nama, harga, tipe, hargaPromo, hargaNormal, promoQty, beliQty, gratisQty,
+    hargaPaket, totalItem, syarat, labelWarna, semuaHarga,
+    hargaDefault: 0, promoDefault: null,
+    kandidat: { aktif: !!alasan, alasan },
+    peringatan: '',
+  };
+
+  // Aturan 4 — promo yang meragukan tak pernah diteruskan ke keranjang.
+  if (out.kandidat.aktif) {
+    out.tipe = 'none';
+    return out;
+  }
+
+  // Aturan 5 — harga yang boleh diisi otomatis. Promo bersyarat (member) dan
+  // promo berubah-jumlah (bulk, gratis) sengaja dibiarkan kosong: user memilih.
+  if (tipe === 'none') out.hargaDefault = harga;
+  if (tipe === 'diskon') {
+    out.hargaDefault = hargaPromo;
+    out.promoDefault = { tipe: 'diskon', label: 'Diskon', hargaNormal };
+  }
+
+  // Aturan 6 — warna hanya menaikkan kewaspadaan, tak pernah mengubah angka.
+  if (labelWarna === 'kuning' && out.tipe === 'none') {
+    out.peringatan = 'Label kuning — biasanya promo. Cek syaratnya.';
+  }
+  return out;
+}
+
+function promoChips(norm) {
+  return [];
+}
+/* ==== PROMO RULES (end) ==== */
+
 function parseResult(text) {
   // Buang pagar kode ```json ... ``` bila ada, lalu ambil objek JSON
   let clean = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
