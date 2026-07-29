@@ -139,3 +139,72 @@ test('tipe none dan diskon tak punya chip; kandidat aktif juga tidak', () => {
   assert.strictEqual(kandidat.kandidat.aktif, true);
   assert.deepStrictEqual(promoChips(kandidat), []);
 });
+
+// Tiap pemicu kandidat wajib: alasan terisi, tipe dipaksa none, harga tak diisi
+// otomatis, dan tak ada promo yang lolos ke keranjang.
+const cekKandidat = (norm, alasan) => {
+  assert.strictEqual(norm.kandidat.aktif, true);
+  assert.strictEqual(norm.kandidat.alasan, alasan);
+  assert.strictEqual(norm.tipe, 'none');
+  assert.strictEqual(norm.hargaDefault, 0);
+  assert.strictEqual(norm.promoDefault, null);
+  assert.strictEqual(norm.peringatan, '');
+};
+
+test('kandidat 1: label kuning dengan beberapa harga', () => {
+  cekKandidat(normalizePromo({
+    nama: 'A', harga: 12000, promoTipe: 'none', labelWarna: 'kuning',
+    semuaHarga: [12000, 15000],
+  }), 'Label kuning & beberapa harga — pilih yang benar');
+});
+
+test('kandidat 2: diskon/member dengan harga tak lengkap', () => {
+  cekKandidat(normalizePromo({
+    nama: 'A', harga: 39000, promoTipe: 'diskon', hargaPromo: 0, hargaNormal: 39000,
+  }), 'Harga promo/normal tak lengkap');
+});
+
+test('kandidat 3: harga promo tak lebih murah dari harga normal', () => {
+  cekKandidat(normalizePromo({
+    nama: 'A', harga: 39000, promoTipe: 'diskon', hargaPromo: 39000, hargaNormal: 33000,
+  }), 'Harga promo tak lebih murah');
+});
+
+test('kandidat 4: data paket tak lengkap', () => {
+  cekKandidat(normalizePromo({
+    nama: 'A', harga: 4000, promoTipe: 'bulk', promoQty: 1, hargaPromo: 4000,
+  }), 'Data paket tak lengkap');
+});
+
+test('kandidat 5: harga paket tak lebih murah dari satuan x jumlah', () => {
+  cekKandidat(normalizePromo({
+    nama: 'A', harga: 1500, promoTipe: 'bulk', promoQty: 3,
+    hargaPromo: 5000, hargaNormal: 1500,
+  }), 'Harga paket tak lebih murah');
+});
+
+test('kandidat 6: data beli-gratis tak lengkap', () => {
+  cekKandidat(normalizePromo({
+    nama: 'A', harga: 10000, promoTipe: 'gratis', beliQty: 2, gratisQty: 0,
+    hargaNormal: 10000,
+  }), 'Data beli-gratis tak lengkap');
+});
+
+test('kuning dengan satu harga: peringatan lembut, harga TETAP terisi', () => {
+  const norm = normalizePromo({
+    nama: 'A', harga: 12000, promoTipe: 'none', labelWarna: 'kuning', semuaHarga: [12000],
+  });
+  assert.strictEqual(norm.kandidat.aktif, false);
+  assert.strictEqual(norm.peringatan, 'Label kuning — biasanya promo. Cek syaratnya.');
+  assert.strictEqual(norm.hargaDefault, 12000);
+});
+
+test('anti-regresi: label putih dengan dua harga (harga per-100g) jalan normal', () => {
+  const norm = normalizePromo({
+    nama: 'Daging', harga: 25000, promoTipe: 'none', labelWarna: 'putih',
+    semuaHarga: [2500, 25000],
+  });
+  assert.strictEqual(norm.kandidat.aktif, false);
+  assert.strictEqual(norm.peringatan, '');
+  assert.strictEqual(norm.hargaDefault, 25000);
+});
