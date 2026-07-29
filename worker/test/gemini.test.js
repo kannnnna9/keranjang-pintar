@@ -2,16 +2,23 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { callGemini, classifyGeminiStatus, parseGeminiText } from "../src/gemini.js";
 
+const KOSONG = {
+  nama: "", harga: "", promoTipe: "none", promoQty: 0, beliQty: 0, gratisQty: 0,
+  hargaPromo: 0, hargaNormal: 0, syarat: "", labelWarna: "lain", semuaHarga: [],
+};
+
 test("parseGeminiText accepts fenced JSON", () => {
-  assert.deepEqual(parseGeminiText("```json\n{\"nama\":\"Susu\",\"harga\":18500}\n```"), {
-    nama: "Susu", harga: 18500, promoTipe: "none", promoQty: 0, hargaPromo: 0, hargaNormal: 0,
-  });
+  assert.deepEqual(
+    parseGeminiText("```json\n{\"nama\":\"Susu\",\"harga\":18500}\n```"),
+    { ...KOSONG, nama: "Susu", harga: 18500 },
+  );
 });
 
 test("parseGeminiText strips non-digits from price", () => {
-  assert.deepEqual(parseGeminiText("{\"nama\":\"Roti\",\"harga\":\"Rp 12.000\"}"), {
-    nama: "Roti", harga: 12000, promoTipe: "none", promoQty: 0, hargaPromo: 0, hargaNormal: 0,
-  });
+  assert.deepEqual(
+    parseGeminiText("{\"nama\":\"Roti\",\"harga\":\"Rp 12.000\"}"),
+    { ...KOSONG, nama: "Roti", harga: 12000 },
+  );
 });
 
 test("parseGeminiText rejects null payloads with a user-safe error", () => {
@@ -23,27 +30,51 @@ test("parseGeminiText rejects null payloads with a user-safe error", () => {
 
 test("parseGeminiText coerces nama to a string", () => {
   assert.deepEqual(parseGeminiText("{\"nama\":123,\"harga\":5000}"), {
-    nama: "123", harga: 5000, promoTipe: "none", promoQty: 0, hargaPromo: 0, hargaNormal: 0,
+    ...KOSONG, nama: "123", harga: 5000,
   });
 });
 
 test("parseGeminiText reads member promo fields", () => {
   assert.deepEqual(
     parseGeminiText("{\"nama\":\"Keju\",\"harga\":39000,\"promoTipe\":\"member\",\"promoQty\":0,\"hargaPromo\":33000,\"hargaNormal\":39000}"),
-    { nama: "Keju", harga: 39000, promoTipe: "member", promoQty: 0, hargaPromo: 33000, hargaNormal: 39000 },
+    { ...KOSONG, nama: "Keju", harga: 39000, promoTipe: "member", hargaPromo: 33000, hargaNormal: 39000 },
   );
 });
 
 test("parseGeminiText reads bulk promo fields", () => {
   assert.deepEqual(
     parseGeminiText("{\"nama\":\"Mie\",\"harga\":1500,\"promoTipe\":\"bulk\",\"promoQty\":3,\"hargaPromo\":4000,\"hargaNormal\":1500}"),
-    { nama: "Mie", harga: 1500, promoTipe: "bulk", promoQty: 3, hargaPromo: 4000, hargaNormal: 1500 },
+    { ...KOSONG, nama: "Mie", harga: 1500, promoTipe: "bulk", promoQty: 3, hargaPromo: 4000, hargaNormal: 1500 },
   );
 });
 
 test("parseGeminiText defaults unknown promoTipe to none", () => {
   const r = parseGeminiText("{\"nama\":\"X\",\"harga\":1000,\"promoTipe\":\"weird\"}");
   assert.equal(r.promoTipe, "none");
+});
+
+test("parseGeminiText meneruskan field promo baru", () => {
+  assert.deepEqual(
+    parseGeminiText(JSON.stringify({
+      nama: "Teh", harga: 10000, promoTipe: "gratis", beliQty: 2, gratisQty: 1,
+      hargaNormal: 10000, syarat: "Beli 2 Gratis 1", labelWarna: "kuning",
+      semuaHarga: [10000, 85, 10000],
+    })),
+    {
+      ...KOSONG, nama: "Teh", harga: 10000, promoTipe: "gratis", beliQty: 2,
+      gratisQty: 1, hargaNormal: 10000, syarat: "Beli 2 Gratis 1",
+      labelWarna: "kuning", semuaHarga: [10000],
+    },
+  );
+});
+
+test("parseGeminiText menolak promoTipe & labelWarna di luar daftar", () => {
+  assert.deepEqual(
+    parseGeminiText(JSON.stringify({
+      nama: "X", harga: 5000, promoTipe: "ngawur", labelWarna: "ungu",
+    })),
+    { ...KOSONG, nama: "X", harga: 5000 },
+  );
 });
 
 test("classifyGeminiStatus maps auth, quota, and server errors", () => {
@@ -78,7 +109,7 @@ test("callGemini parses success responses and sends api key in a header", async 
     fetchImpl,
   });
 
-  assert.deepEqual(result, { nama: "Teh", harga: 5000, promoTipe: "none", promoQty: 0, hargaPromo: 0, hargaNormal: 0 });
+  assert.deepEqual(result, { ...KOSONG, nama: "Teh", harga: 5000 });
   assert.equal(calls.length, 1);
   assert.match(calls[0].url, /gemini-3\.1-flash-lite:generateContent$/);
   assert.equal(calls[0].init.headers["x-goog-api-key"], "demo-key");
