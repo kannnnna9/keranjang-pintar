@@ -788,6 +788,11 @@ body {
 .promo-picker { margin: 4px 0 10px; }
 .promo-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .promo-chips .chip { cursor: pointer; }
+/* Kutipan syarat yang dibaca AI: informatif tapi jangan berebut perhatian. */
+.res-quote { color: var(--text-dim); font-weight: 500; font-style: italic; }
+/* Peringatan / alasan mode kandidat. Dibedakan lewat garis aksen, BUKAN warna
+   baru — palet "Ungu Lembut" dikunci. */
+.res-warn { border-left: 2px solid var(--accent); padding-left: 8px; }
 
 /* Promo: badge + harga coret di keranjang/ringkasan */
 .ci-badge {
