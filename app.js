@@ -191,7 +191,9 @@ let cartSessionId = null; // id sesi belanja berjalan untuk grup foto F2
 let editIndex = -1;     // indeks item keranjang yang sedang diedit (-1 = tidak ada)
 let sessionSaved = false; // true bila komposisi keranjang ini sudah masuk riwayat
 let budget = 0;         // anggaran sesi ini (Rp); 0 = belum diatur. Per sesi, reset saat belanja baru.
-let lastReconcile = null;
+let lastReconcile = null; // hasil reconcileHitung terakhir (untuk render ulang)
+let lastBaris = null;     // transkripsi struk dari AI (dipakai hitung ulang lokal)
+let lastGrup = null;      // grupKeranjang saat rekonsiliasi dijalankan
 let shoppingNote = { items: [], updatedAt: 0 };
 
 /* ---------- Keranjang anti-hilang ----------
@@ -2040,31 +2042,36 @@ async function onReceiptPicked(e) {
   if (!file) return;
   try {
     const base64 = await fileToBase64(file);
-    const cartData = cart.map((it) => ({ nama: it.nama, hargaRak: it.harga }));
+    lastGrup = grupKeranjang(cart);
+    const daftar = lastGrup.map((g) => ({ i: g.i, nama: g.nama, unit: g.unit, total: g.total }));
     openReconcileScreen();
-    const result = await reconcileReceipt(base64, cartData);
-    await applyReconcileResult(result);
-    renderReconcile(result);
+    lastBaris = await reconcileReceipt(base64, daftar);
+    const hasil = reconcileHitung(lastGrup, lastBaris);
+    await applyReconcileResult(hasil);
+    renderReconcile(hasil);
   } catch (_) {
     showReconcileError('Gagal membaca struk. Coba lagi.');
   }
 }
 
-async function applyReconcileResult(result) {
-  if (!window.PhotoDB || !cartSessionId) return;
-  const photos = await window.PhotoDB.getPhotosBySession(cartSessionId);
-  const byNama = {};
-  photos.forEach((photo) => { byNama[photo.nama] = photo; });
+async function applyReconcileResult(hasil) {
+  if (!window.PhotoDB || !cartSessionId || !lastGrup) return;
   const now = Date.now();
-  for (const row of result) {
-    const photo = byNama[row.nama];
-    if (!photo) continue;
+  for (const row of hasil.rows) {
+    const grup = lastGrup.find((g) => g.i === row.i);
+    if (!grup) continue;
     const status = window.Retention.mapMatchStatus(row.status);
-    photo.status = status;
-    photo.hargaKasir = row.hargaKasir != null ? row.hargaKasir : null;
-    photo.matchedAt = now;
-    if (status !== 'pending') photo.expiresAt = window.Retention.nextExpiry(status, now);
-    await window.PhotoDB.putPhoto(photo);
+    for (const idx of grup.rowIdx) {
+      const it = cart[idx];
+      if (!it || !it.photoId) continue;
+      const photo = await window.PhotoDB.getPhoto(it.photoId);
+      if (!photo) continue;
+      photo.status = status;
+      photo.hargaKasir = row.totalStruk || null;
+      photo.matchedAt = now;
+      if (status !== 'pending') photo.expiresAt = window.Retention.nextExpiry(status, now);
+      await window.PhotoDB.putPhoto(photo);
+    }
   }
 }
 
