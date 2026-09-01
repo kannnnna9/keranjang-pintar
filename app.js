@@ -1805,6 +1805,7 @@ function cartUnits() { return cart.reduce((s, it) => s + itemQty(it), 0); }
 
 // HTML badge promo (chip kecil ikon tag + label). '' bila item tanpa promo.
 function promoBadge(it) {
+  if (it.dariStruk) return `<span class="ci-badge">${svgIcon('tag', 12)}Dari struk</span>`;
   return it.promo ? `<span class="ci-badge">${svgIcon('tag', 12)}${it.promo.label}</span>` : '';
 }
 // HTML harga coret harga normal bila ada. '' bila tak ada.
@@ -2262,6 +2263,41 @@ async function manualMatch(i) {
     row.status = status;
   }
   if (lastReconcile) renderReconcile(lastReconcile);
+}
+
+// Masukkan baris struk asing ke keranjang, lalu hitung ulang secara lokal dari
+// transkripsi yang sama. Tidak ada panggilan Gemini maupun kuota tambahan.
+async function tambahDariStruk(idx) {
+  if (!lastReconcile || !lastBaris) return;
+  const a = lastReconcile.asing[idx];
+  if (!a) return;
+  const { harga, qty } = barisDariStruk(a.net, a.qty);
+  cart.push({ nama: a.nama, harga, qty, promo: null, dariStruk: true });
+  persistCart();
+  renderCart();
+  perbaruiEntriRiwayat();
+  lastGrup = grupKeranjang(cart);
+  const hasil = reconcileHitung(lastGrup, lastBaris);
+  await applyReconcileResult(hasil);
+  renderReconcile(hasil);
+  showToast('Ditambahkan dari struk');
+}
+
+// Tulis ulang komposisi & total entri riwayat sesi ini dari keranjang sekarang.
+function perbaruiEntriRiwayat() {
+  try {
+    const list = loadHistory();
+    if (!list.length) return;
+    const entry = list.find((e) => e.sessionId && e.sessionId === cartSessionId) || list[0];
+    entry.items = cart.map((it) => ({
+      nama: it.nama, harga: it.harga, qty: itemQty(it),
+      dariStruk: it.dariStruk ? true : undefined,
+    }));
+    entry.total = cartTotal();
+    localStorage.setItem(HISTORY_STORAGE, JSON.stringify(list));
+  } catch (_) {
+    showToast('Riwayat mungkin tak terbarui');
+  }
 }
 
 // Buka sheet edit pada baris keranjang pertama dari grup ini. Sengaja TIDAK
