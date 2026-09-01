@@ -673,9 +673,11 @@ function markZoomAktif() {
 
 async function onZoomTap(x, nilai) {
   if (!stream) return;
-  const track = stream.getVideoTracks()[0];
+  const mediaStream = stream;
+  const track = mediaStream.getVideoTracks()[0];
   if (!track) return;
   const ok = await applyZoom(track, nilai, zoomCaps && zoomCaps.step);
+  if (stream !== mediaStream) return;
   // Ditolak → level lama dipertahankan, TANPA banner error. Zoom gagal bukan
   // bencana, cuma tidak terjadi. #cam-error disimpan untuk kegagalan yang
   // benar-benar menghalangi (izin, kamera tak terbaca).
