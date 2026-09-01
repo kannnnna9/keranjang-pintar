@@ -2189,7 +2189,10 @@ async function manualMatch(nama) {
   const item = cart.find((entry) => entry.nama === nama);
   const hargaRak = item ? item.harga : 0;
   const status = Number.isNaN(hargaKasir) ? 'tak_ketemu' : (hargaKasir === hargaRak ? 'sama' : 'beda');
-  await applyReconcileResult([{ nama, hargaRak, hargaKasir: Number.isNaN(hargaKasir) ? null : hargaKasir, status }]);
+  const grup = lastGrup && lastGrup.find((entry) => entry.nama === nama);
+  if (grup) await applyReconcileResult({
+    rows: [{ i: grup.i, nama, hargaRak, totalStruk: Number.isNaN(hargaKasir) ? 0 : hargaKasir, status }],
+  });
   if (lastReconcile) {
     const row = lastReconcile.find((entry) => entry.nama === nama);
     if (row) { row.hargaKasir = Number.isNaN(hargaKasir) ? null : hargaKasir; row.status = status; }
