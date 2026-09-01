@@ -5,6 +5,21 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.8.0] - 2026-09-01
+
+### Diperbaiki
+- **Cocokkan Struk tidak lagi menuduh kasir untuk barang yang sedang diskon.** Sebelumnya harga di struk dibaca dari kolom harga penuh dan baris "HEMAT" di bawahnya diabaikan, sehingga tiap item promo dilaporkan sebagai "beda harga". Pada satu struk nyata itu berarti 15 tuduhan palsu sekaligus, dan angka selisihnya terbalik arah: dilaporkan kasir menagih Rp33.810 lebih mahal padahal justru dapat diskon Rp52.300.
+- Total pada hasil cek struk kini menghitung jumlah barang. Sebelumnya harga per baris dijumlahkan tanpa memperhitungkan jumlah, jadi belanja dengan item berjumlah lebih dari satu selalu menampilkan total yang lebih kecil dari kenyataan.
+- Barang dengan nama sama yang discan dua kali tak lagi saling menimpa saat dicocokkan ke foto raknya.
+- Panel "Hasil cek struk" di riwayat sekarang terbaca per kelompok, bukan satu paragraf panjang.
+
+### Ditambahkan
+- **Barang yang lupa discan sekarang ketangkap.** Baris struk yang tak cocok dengan keranjang muncul di kelompok "Ada di struk, tak discan" lengkap dengan harga bersihnya, plus tombol "Tambahkan" untuk memasukkannya ke keranjang tanpa panggilan AI baru. Barang itu ditandai "Dari struk" supaya tetap kelihatan bahwa harganya belum pernah diverifikasi ke label rak.
+- Selisih jumlah dilaporkan tersendiri: "di struk 2, kamu scan 1". Barang yang dibatalkan kasir (baris berjumlah negatif) ikut diperhitungkan sehingga tak jadi alarm palsu.
+- Beda harga dipisah dua arah: "Ditagih lebih mahal" (perlu ditindak) dan "Ditagih lebih murah" (info saja).
+- Total belanja di struk dipakai untuk memeriksa bacaan AI sendiri. Kalau semua angka klop, muncul "Angka struk konsisten"; kalau tidak, selisih yang tak terjelaskan ditampilkan supaya struknya bisa difoto ulang.
+- Jumlah diskon yang didapat ("Hemat") kini ditampilkan.
+
 ## [2.7.0] - 2026-09-01
 
 ### Ditambahkan
