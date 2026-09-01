@@ -2458,7 +2458,8 @@ async function showHistoryDetail(i) {
     } else {
       rcBox.hidden = false;
       const hitung = (s) => rc.rows.filter((r) => r.status === s);
-      const rinci = (arr, n) => arr.slice(0, n).map((r) => `${r.nama} ${rupiah(r.totalStruk)}`).join(' · ') +
+      const teksAman = (teks) => String(teks).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+      const rinci = (arr, n) => arr.slice(0, n).map((r) => `${teksAman(r.nama)} ${rupiah(r.totalStruk)}`).join(' · ') +
         (arr.length > n ? ` · dan ${arr.length - n} lain` : '');
       const jumlahRp = (arr) => arr.reduce((a, r) => a + Math.abs(r.totalStruk - r.totalKeranjang), 0);
       const blok = [];
@@ -2466,7 +2467,7 @@ async function showHistoryDetail(i) {
       if (mahal.length) blok.push(`<div class="rc-hist-row"><strong>Lebih mahal (${mahal.length})</strong> ${rinci(mahal, 3)}</div>`);
       if (rc.asing && rc.asing.length) {
         blok.push(`<div class="rc-hist-row"><strong>Tak discan (${rc.asing.length})</strong> ` +
-          rc.asing.slice(0, 3).map((a) => `${a.nama} ${rupiah(a.net)}`).join(' · ') +
+          rc.asing.slice(0, 3).map((a) => `${teksAman(a.nama)} ${rupiah(a.net)}`).join(' · ') +
           (rc.asing.length > 3 ? ` · dan ${rc.asing.length - 3} lain` : '') + `</div>`);
       }
       const qtyBeda = hitung('qty_beda');

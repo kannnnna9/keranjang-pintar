@@ -17,3 +17,10 @@
 - `node --check app.js` lulus.
 - `git diff --check` bersih.
 - Tidak mengubah worker, PROMO RULES, alur scan, atau Demo.
+
+## Fix round 1/5 — nama OCR di panel riwayat
+
+- Akar masalah: renderer snapshot v2 memasukkan `rc.rows[].nama` dan `rc.asing[].nama` langsung ke `innerHTML`. Nama berasal dari OCR/riwayat, sehingga tag seperti `<img onerror=...>` akan diparse sebagai elemen saat riwayat dibuka.
+- Perbaikan minimum: `teksAman` meng-escape lima karakter HTML pada dua interpolasi nama tersebut. Jalur v1 tidak merender nama; daftar item riwayat yang lain sudah menetapkan nama lewat `textContent`.
+- Regresi menjalankan `showHistoryDetail` dengan dua nama `<img ...>` dan memastikan panel tidak memiliki elemen `img`, sekaligus mencakup `saveReconcileToHistory` ke snapshot v2 sesi aktif.
+- Focused `node --test test/reconcile-snapshot.test.js`: 6 lulus, 0 gagal. Full `node --test "test/*.test.js"`: 93 lulus, 0 gagal. `node --check app.js` dan `git diff --check` lulus.
