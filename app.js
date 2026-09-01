@@ -1381,9 +1381,66 @@ function rcBatasPosisi(baris) {
     ? Object.assign({}, b, { peran: 'lain', cocokKe: -1 })
     : b));
 }
-function rcJangkar(list) { return null; }
-function rcTautkanPotongan(list) { return null; }
-function rcGrupStruk(list, p) { return null; }
+// Jangkar = satu-satunya angka yang pasti ada dan berarti sama di SEMUA struk di
+// semua toko. Selain memverifikasi bacaan, dia juga detektor output AI terpotong.
+// Tak pernah mengubah status item — cuma menjawab "apakah bacaan struknya utuh".
+function rcJangkar(baris) {
+  let bruto = 0, potongan = 0, penyesuaian = 0;
+  let jangkar = null, urutJangkar = -Infinity;
+  for (const b of baris) {
+    if (b.peran === 'barang') bruto += b.total;
+    else if (b.peran === 'potongan') potongan += b.total;
+    else if (b.peran === 'penyesuaian') penyesuaian += b.total;
+    else if (b.peran === 'total' && b.urut > urutJangkar) {
+      urutJangkar = b.urut;
+      jangkar = b.total;
+    }
+  }
+  const hitungJS = bruto + potongan + penyesuaian;
+  const ada = jangkar != null;
+  return {
+    bruto, potongan, penyesuaian, hitungJS,
+    jangkar: ada ? jangkar : hitungJS,
+    cocok: ada ? jangkar === hitungJS : false,
+    takTerjelaskan: ada ? jangkar - hitungJS : 0,
+  };
+}
+
+// Baris potongan milik baris 'barang' TERDEKAT SEBELUMNYA (menurut urut).
+// Objek biasa (bukan Map) supaya bisa dites lewat round-trip JSON.
+// Begitu blok total dimulai, "barang terakhir" DIRESET.
+function rcTautkanPotongan(baris) {
+  const urutNaik = baris.slice().sort((a, b) => a.urut - b.urut);
+  const per = {};
+  let barangTerakhir = null;
+  for (const b of urutNaik) {
+    if (b.peran === 'barang') barangTerakhir = b;
+    else if (b.peran === 'total') barangTerakhir = null;
+    else if (b.peran === 'potongan' && barangTerakhir) {
+      per[barangTerakhir.urut] = (per[barangTerakhir.urut] || 0) + b.total;
+    }
+  }
+  return per;
+}
+
+function rcGrupStruk(baris, potonganPer) {
+  const grup = {};
+  const asing = [];
+  for (const b of baris) {
+    if (b.peran !== 'barang') continue;
+    const net = b.total + (potonganPer[b.urut] || 0);
+    if (b.cocokKe < 0) {
+      asing.push({ nama: b.nama, qty: Math.abs(b.qty) || 1, net });
+      continue;
+    }
+    const g = grup[b.cocokKe] || { unit: 0, net: 0, terbaca: true };
+    g.unit += b.qty;
+    g.net += net;
+    if (b.total === 0 && b.harga === 0) g.terbaca = false;
+    grup[b.cocokKe] = g;
+  }
+  return { grup, asing };
+}
 function reconcileHitung(grupCart, barisMentah) { return null; }
 function barisDariStruk(net, qty) { return null; }
 /* ==== RECONCILE RULES (end) ==== */

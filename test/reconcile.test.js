@@ -23,6 +23,9 @@ this.barisDariStruk = barisDariStruk;
 this.rcSanitasiBaris = rcSanitasiBaris;
 this.rcPeriksaPeran = rcPeriksaPeran;
 this.rcBatasPosisi = rcBatasPosisi;
+this.rcTautkanPotongan = rcTautkanPotongan;
+this.rcGrupStruk = rcGrupStruk;
+this.rcJangkar = rcJangkar;
 `,
   ctx,
 );
@@ -35,6 +38,9 @@ const barisDariStruk = (net, qty) => J(ctx.barisDariStruk(net, qty));
 const rcSan = (raw, i) => J(ctx.rcSanitasiBaris(raw, i || 0));
 const rcPer = (b) => J(ctx.rcPeriksaPeran(b));
 const rcPos = (list) => J(ctx.rcBatasPosisi(list));
+const rcTaut = (list) => J(ctx.rcTautkanPotongan(list));
+const rcGrup = (list, p) => J(ctx.rcGrupStruk(list, p));
+const rcJang = (list) => J(ctx.rcJangkar(list));
 
 test('unitFisik: item biasa = qty', () => {
   assert.strictEqual(unitFisik({ harga: 3500, qty: 4 }), 4);
@@ -135,4 +141,103 @@ test('batas posisi: barang setelah baris total terakhir dipaksa lain', () => {
 test('batas posisi: tanpa baris total, daftar tak diubah', () => {
   const list = [{ urut: 1, peran: 'barang', nama: 'A', total: 1, cocokKe: 0 }];
   assert.deepStrictEqual(rcPos(list), list);
+});
+
+test('potongan menempel ke barang terdekat di atasnya', () => {
+  const p = rcTaut([
+    { urut: 1, peran: 'barang', nama: 'Wonhae', qty: 1, harga: 10490, total: 10490, cocokKe: 0 },
+    { urut: 2, peran: 'potongan', nama: 'HEMAT', qty: 0, harga: 0, total: -1500, cocokKe: -1 },
+    { urut: 3, peran: 'barang', nama: 'Indomi', qty: 2, harga: 3190, total: 6380, cocokKe: 1 },
+  ]);
+  assert.deepStrictEqual(p, { 1: -1500 });
+});
+
+test('potongan SEBELUM barang pertama tak tertaut ke siapa pun', () => {
+  const p = rcTaut([
+    { urut: 1, peran: 'potongan', nama: 'DISKON BELANJA', total: -5000, cocokKe: -1 },
+    { urut: 2, peran: 'barang', nama: 'A', qty: 1, harga: 1000, total: 1000, cocokKe: 0 },
+  ]);
+  assert.deepStrictEqual(p, {});
+});
+
+test('blok total menutup penautan: potongan setelah TOTAL tak dibebankan ke barang terakhir', () => {
+  const p = rcTaut([
+    { urut: 1, peran: 'barang', nama: 'A', qty: 1, harga: 1000, total: 1000, cocokKe: 0 },
+    { urut: 2, peran: 'total', nama: 'TOTAL', total: 1000, cocokKe: -1 },
+    { urut: 3, peran: 'potongan', nama: 'DISKON KUPON', total: -200, cocokKe: -1 },
+  ]);
+  assert.deepStrictEqual(p, {});
+});
+
+test('agregasi struk: baris void menetralkan qty dan net', () => {
+  const baris = [
+    { urut: 1, peran: 'barang', nama: 'B/R TEMP', qty: 2, harga: 1890, total: 3780, cocokKe: 0 },
+    { urut: 2, peran: 'potongan', nama: 'HEMAT', total: -900, cocokKe: -1 },
+    { urut: 3, peran: 'barang', nama: 'B/R TEMP', qty: -1, harga: 1890, total: -1890, cocokKe: 0 },
+    { urut: 4, peran: 'potongan', nama: 'HEMAT', total: 450, cocokKe: -1 },
+  ];
+  const { grup, asing } = rcGrup(baris, rcTaut(baris));
+  assert.deepStrictEqual(asing, []);
+  assert.strictEqual(grup['0'].unit, 1);
+  assert.strictEqual(grup['0'].net, 1440);
+  assert.strictEqual(grup['0'].terbaca, true);
+});
+
+test('agregasi struk: baris tak tertaut jadi asing, satu per baris', () => {
+  const baris = [
+    { urut: 1, peran: 'barang', nama: 'KANZLER NUGG SPCY', qty: 1, harga: 56890, total: 56890, cocokKe: -1 },
+    { urut: 2, peran: 'potongan', nama: 'HEMAT', total: -17990, cocokKe: -1 },
+  ];
+  const { grup, asing } = rcGrup(baris, rcTaut(baris));
+  assert.deepStrictEqual(grup, {});
+  assert.deepStrictEqual(asing, [{ nama: 'KANZLER NUGG SPCY', qty: 1, net: 38900 }]);
+});
+
+test('agregasi struk: baris tak terbaca menandai grupnya', () => {
+  const baris = [{ urut: 1, peran: 'barang', nama: 'X', qty: 0, harga: 0, total: 0, cocokKe: 0 }];
+  const { grup } = rcGrup(baris, {});
+  assert.strictEqual(grup['0'].terbaca, false);
+});
+
+test('jangkar: bruto + potongan + penyesuaian === TOTAL tercetak', () => {
+  const jk = rcJang([
+    { urut: 1, peran: 'barang', nama: 'A', qty: 1, harga: 10000, total: 10000, cocokKe: 0 },
+    { urut: 2, peran: 'potongan', nama: 'HEMAT', total: -1500, cocokKe: -1 },
+    { urut: 3, peran: 'penyesuaian', nama: 'Pembulatan', total: -400, cocokKe: -1 },
+    { urut: 4, peran: 'total', nama: 'Sub Total', total: 8100, cocokKe: -1 },
+    { urut: 5, peran: 'total', nama: 'TOTAL', total: 8100, cocokKe: -1 },
+  ]);
+  assert.strictEqual(jk.bruto, 10000);
+  assert.strictEqual(jk.potongan, -1500);
+  assert.strictEqual(jk.penyesuaian, -400);
+  assert.strictEqual(jk.hitungJS, 8100);
+  assert.strictEqual(jk.jangkar, 8100);
+  assert.strictEqual(jk.cocok, true);
+  assert.strictEqual(jk.takTerjelaskan, 0);
+});
+
+test('jangkar: baris total TERAKHIR yang dipakai, bukan Sub Total', () => {
+  const jk = rcJang([
+    { urut: 1, peran: 'barang', nama: 'A', qty: 1, harga: 10000, total: 10000, cocokKe: 0 },
+    { urut: 2, peran: 'total', nama: 'Sub Total', total: 10000, cocokKe: -1 },
+    { urut: 3, peran: 'penyesuaian', nama: 'Pembulatan', total: -300, cocokKe: -1 },
+    { urut: 4, peran: 'total', nama: 'TOTAL', total: 9700, cocokKe: -1 },
+  ]);
+  assert.strictEqual(jk.jangkar, 9700);
+  assert.strictEqual(jk.cocok, true);
+});
+
+test('jangkar: transkripsi terpotong -> tak cocok, selisihnya terbaca', () => {
+  const jk = rcJang([
+    { urut: 1, peran: 'barang', nama: 'A', qty: 1, harga: 10000, total: 10000, cocokKe: 0 },
+    { urut: 9, peran: 'total', nama: 'TOTAL', total: 25000, cocokKe: -1 },
+  ]);
+  assert.strictEqual(jk.cocok, false);
+  assert.strictEqual(jk.takTerjelaskan, 15000);
+});
+
+test('jangkar: struk tanpa baris total sama sekali -> tak bisa diverifikasi', () => {
+  const jk = rcJang([{ urut: 1, peran: 'barang', nama: 'A', qty: 1, harga: 500, total: 500, cocokKe: 0 }]);
+  assert.strictEqual(jk.cocok, false);
+  assert.strictEqual(jk.jangkar, 500);
 });
