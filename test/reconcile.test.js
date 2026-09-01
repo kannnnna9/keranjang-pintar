@@ -452,3 +452,15 @@ test('daftar baris kosong tak melempar', () => {
   assert.deepStrictEqual(r.asing, []);
   assert.strictEqual(r.jangkar.cocok, false);
 });
+
+test('cocokKe di luar grup keranjang dipertahankan sebagai barang asing', () => {
+  const grup = grupKeranjang([{ nama: 'Gula', harga: 1000, qty: 1 }]);
+  const r = reconcileHitung(grup, [
+    { urut: 1, peran: 'barang', nama: 'GULA', qty: 1, harga: 1000, total: 1000, cocokKe: 0 },
+    { urut: 2, peran: 'barang', nama: 'BARANG TAK TERTAUT', qty: 1, harga: 500, total: 500, cocokKe: 99 },
+    { urut: 3, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 1500, cocokKe: -1 },
+  ]);
+  assert.strictEqual(r.rows[0].status, 'sama');
+  assert.deepStrictEqual(r.asing, [{ nama: 'BARANG TAK TERTAUT', qty: 1, net: 500 }]);
+  assert.strictEqual(r.jangkar.cocok, true);
+});

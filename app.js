@@ -1444,15 +1444,17 @@ function rcGrupStruk(baris, potonganPer) {
 // Satu-satunya pintu masuk perhitungan. AI sudah selesai tugasnya sebelum ini:
 // yang masuk cuma transkripsi + tautan, semua putusan terjadi di sini.
 function reconcileHitung(grupCart, barisMentah) {
+  const cart = Array.isArray(grupCart) ? grupCart : [];
   const bersih = rcBatasPosisi(
     (Array.isArray(barisMentah) ? barisMentah : [])
       .map(rcSanitasiBaris)
       .map(rcPeriksaPeran)
-  );
+  ).map((b) => (b.cocokKe >= cart.length
+    ? Object.assign({}, b, { cocokKe: -1 })
+    : b));
   const potonganPer = rcTautkanPotongan(bersih);
   const { grup, asing } = rcGrupStruk(bersih, potonganPer);
   const jk = rcJangkar(bersih);
-  const cart = Array.isArray(grupCart) ? grupCart : [];
 
   const rows = cart.map((g) => {
     const s = grup[g.i];
