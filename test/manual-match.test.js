@@ -83,3 +83,30 @@ test('tambahDariStruk menambah lokal dan memperbarui entri riwayat sesi yang sam
     items: [{ nama: 'Kanzler', harga: 1440, qty: 2, dariStruk: true }],
   }]]]);
 });
+
+test('tambahDariStruk mengabaikan klik kedua selama rekonsiliasi pertama berjalan', async () => {
+  let lanjutkan;
+  const ctx = {
+    cart: [],
+    lastBaris: [{ nama: 'Kanzler', total: 2880 }],
+    lastReconcile: { asing: [{ nama: 'Kanzler', net: 2880, qty: 2 }] },
+    barisDariStruk: (net, qty) => ({ harga: net / qty, qty }),
+    persistCart: () => {},
+    renderCart: () => {},
+    perbaruiEntriRiwayat: () => {},
+    grupKeranjang: (cart) => cart.map((it, i) => ({ i, nama: it.nama, unit: it.qty, total: it.harga * it.qty, rowIdx: [i] })),
+    reconcileHitung: (grup) => ({ rows: grup, asing: [] }),
+    applyReconcileResult: () => new Promise((resolve) => { lanjutkan = resolve; }),
+    renderReconcile: () => {},
+    showToast: () => {},
+  };
+  vm.runInNewContext(body + '\nthis.tambahDariStruk = tambahDariStruk;', ctx);
+
+  const pertama = ctx.tambahDariStruk(0);
+  const kedua = ctx.tambahDariStruk(0);
+
+  assert.strictEqual(ctx.cart.length, 1);
+  lanjutkan();
+  await Promise.all([pertama, kedua]);
+  assert.strictEqual(ctx.cart.length, 1);
+});

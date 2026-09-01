@@ -25,3 +25,12 @@
 - `node --check app.js` — lulus.
 - `node --test "test/*.test.js"` — lulus: 90 pass, 0 fail.
 - `git diff --check` — lulus.
+
+## Fix round 1/5 — klik ganda saat pembaruan foto berjalan
+
+- Akar masalah: kedua pemanggilan dapat membaca `lastReconcile.asing[idx]`
+  yang sama sebelum pemanggilan pertama melewati `await applyReconcileResult`.
+- `tambahDariStruk` kini memakai satu guard bersama sebelum mutasi dan
+  melepaskannya dalam `finally`, termasuk ketika pembaruan gagal.
+- Tes serentak baru mula-mula RED (`2 !== 1`), lalu GREEN; suite penuh lulus
+  91 pass, 0 fail.

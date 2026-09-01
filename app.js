@@ -2267,20 +2267,26 @@ async function manualMatch(i) {
 
 // Masukkan baris struk asing ke keranjang, lalu hitung ulang secara lokal dari
 // transkripsi yang sama. Tidak ada panggilan Gemini maupun kuota tambahan.
+let tambahDariStrukSedangProses = false;
 async function tambahDariStruk(idx) {
-  if (!lastReconcile || !lastBaris) return;
-  const a = lastReconcile.asing[idx];
-  if (!a) return;
-  const { harga, qty } = barisDariStruk(a.net, a.qty);
-  cart.push({ nama: a.nama, harga, qty, promo: null, dariStruk: true });
-  persistCart();
-  renderCart();
-  perbaruiEntriRiwayat();
-  lastGrup = grupKeranjang(cart);
-  const hasil = reconcileHitung(lastGrup, lastBaris);
-  await applyReconcileResult(hasil);
-  renderReconcile(hasil);
-  showToast('Ditambahkan dari struk');
+  if (tambahDariStrukSedangProses || !lastReconcile || !lastBaris) return;
+  tambahDariStrukSedangProses = true;
+  try {
+    const a = lastReconcile.asing[idx];
+    if (!a) return;
+    const { harga, qty } = barisDariStruk(a.net, a.qty);
+    cart.push({ nama: a.nama, harga, qty, promo: null, dariStruk: true });
+    persistCart();
+    renderCart();
+    perbaruiEntriRiwayat();
+    lastGrup = grupKeranjang(cart);
+    const hasil = reconcileHitung(lastGrup, lastBaris);
+    await applyReconcileResult(hasil);
+    renderReconcile(hasil);
+    showToast('Ditambahkan dari struk');
+  } finally {
+    tambahDariStrukSedangProses = false;
+  }
 }
 
 // Tulis ulang komposisi & total entri riwayat sesi ini dari keranjang sekarang.
