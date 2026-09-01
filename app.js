@@ -1441,7 +1441,53 @@ function rcGrupStruk(baris, potonganPer) {
   }
   return { grup, asing };
 }
-function reconcileHitung(grupCart, barisMentah) { return null; }
+// Satu-satunya pintu masuk perhitungan. AI sudah selesai tugasnya sebelum ini:
+// yang masuk cuma transkripsi + tautan, semua putusan terjadi di sini.
+function reconcileHitung(grupCart, barisMentah) {
+  const bersih = rcBatasPosisi(
+    (Array.isArray(barisMentah) ? barisMentah : [])
+      .map(rcSanitasiBaris)
+      .map(rcPeriksaPeran)
+  );
+  const potonganPer = rcTautkanPotongan(bersih);
+  const { grup, asing } = rcGrupStruk(bersih, potonganPer);
+  const jk = rcJangkar(bersih);
+  const cart = Array.isArray(grupCart) ? grupCart : [];
+
+  const rows = cart.map((g) => {
+    const s = grup[g.i];
+    // URUTAN MENGIKAT — cocok pertama menentukan status. qty diperiksa sebelum
+    // harga: kalau jumlahnya beda, selisih uangnya adalah AKIBAT, bukan soal harga.
+    let status;
+    if (!s) status = 'tak_ketemu';
+    else if (!s.terbaca) status = 'tak_pasti';
+    else if (s.unit !== g.unit) status = 'qty_beda';
+    else if (s.net > g.total) status = 'lebih_mahal';
+    else if (s.net < g.total) status = 'lebih_murah';
+    else status = 'sama';
+    return {
+      i: g.i,
+      nama: g.nama,
+      unitKeranjang: g.unit,
+      unitStruk: s ? s.unit : 0,
+      totalKeranjang: g.total,
+      totalStruk: s ? s.net : 0,
+      selisih: s ? s.net - g.total : 0,
+      status,
+    };
+  });
+
+  const totalKeranjang = cart.reduce((a, g) => a + g.total, 0);
+  return {
+    rows,
+    asing,
+    totalKeranjang,
+    totalStruk: jk.jangkar,
+    selisih: jk.jangkar - totalKeranjang,
+    hemat: Math.abs(jk.potongan),
+    jangkar: { cocok: jk.cocok, takTerjelaskan: jk.takTerjelaskan },
+  };
+}
 function barisDariStruk(net, qty) { return null; }
 /* ==== RECONCILE RULES (end) ==== */
 

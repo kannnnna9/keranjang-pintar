@@ -241,3 +241,214 @@ test('jangkar: struk tanpa baris total sama sekali -> tak bisa diverifikasi', ()
   assert.strictEqual(jk.cocok, false);
   assert.strictEqual(jk.jangkar, 500);
 });
+
+/* Fixture struk Super Indo 31-08-26 20:42 — CONTOH YANG TERAMATI, BUKAN KONTRAK
+   FORMAT. Reza belanja di lebih dari satu toko; tiap toko beda format. Fixture ini
+   dipakai karena inilah struk yang membuat fitur v2.3.0 melaporkan 15 "beda harga"
+   palsu dan melewatkan satu barang tak discan senilai Rp38.900.
+   Kolom: [urut, peran, nama, qty, harga, total, cocokKe] */
+const B = (urut, peran, nama, qty, harga, total, cocokKe) =>
+  ({ urut, peran, nama, qty, harga, total, cocokKe });
+const H = (urut, total) => B(urut, 'potongan', 'HEMAT', 0, 0, total, -1);
+
+const CART_SUPERINDO = [
+  { nama: 'BIOKUL YOGURT TO GO BROWN SUGAR 80G', harga: 5910, qty: 1 },
+  { nama: 'EMINA CHE/S CEDDA10S', harga: 13990, qty: 1 },
+  { nama: 'LIANG SHI FU BLACK SESAME OIL 110ML', harga: 30860, qty: 1 },
+  { nama: 'SEGITIGA BIRU 1 KG', harga: 12990, qty: 1 },
+  { nama: 'ROYCO AYAM 6X8GR', harga: 3790, qty: 4 },
+  { nama: 'INDOFOOD BUMBU RACIK TEMPE GORENG 20GR', harga: 1540, qty: 1 },
+  { nama: 'INDOFOOD BUMBU RACIK AYAM GORENG 26GR', harga: 1540, qty: 1 },
+  { nama: 'INDOFOOD BUMBU RACIK SAYUR LODEH 25G', harga: 1540, qty: 1 },
+  { nama: 'INDOFOOD BUMBU RACIK SAYUR SOP 20GR', harga: 1540, qty: 1 },
+  { nama: 'INFOFOOD BUMBU RACIK IKAN GORENG 20GR', harga: 1540, qty: 1 },
+  { nama: 'PRONAS CORNED BEEF CLASSIC 500G', harga: 6900, qty: 1 },
+  { nama: 'MIGELAS KR AYAM 6X28', harga: 7790, qty: 1 },
+  { nama: 'INDOMI GRNG CAKALA82', harga: 3190, qty: 2 },
+  { nama: 'DASUIB RICE/P BLT20', harga: 19790, qty: 1 },
+  { nama: 'SOHUN 100G', harga: 7900, qty: 1 },
+  { nama: 'KAHF DEODORANT COOLING POWER 45ML', harga: 22670, qty: 1 },
+  { nama: "TESSA FACIAL TISSUE TP-06 PA 2X200'S", harga: 16095, qty: 1 },
+  { nama: 'KOJIE SAN SKIN LIGHTENING SOAP KOJIC ACID 135G', harga: 35435, qty: 1 },
+  { nama: 'MARINA HAND BODY LOTION UV WHITE EXTRA SPF30 185ML', harga: 14790, qty: 1 },
+  { nama: 'GIV SABUN MANDI WHITE BENGKOANG YOGH 5XX', harga: 11190, qty: 1 },
+  { nama: 'MY BABY M/TELON60', harga: 18490, qty: 1 },
+  { nama: '3M S/BRITE EASY CLN', harga: 10490, qty: 1 },
+  { nama: 'WONHAE TOPOKKI SNACK CHEESE', harga: 8990, qty: 1 },
+  { nama: 'K/API SUPER BLK CF10', harga: 12490, qty: 1 },
+  { nama: 'KANZLER GOCHU JNG120', harga: 14490, qty: 1 },
+];
+
+const STRUK_SUPERINDO = [
+  B(1, 'barang', 'WONHAE TOPOK CHE/', 1, 10490, 10490, 22), H(2, -1500),
+  B(3, 'barang', 'TESSA FAC.TP06 2X', 1, 22990, 22990, 16), H(4, -6895),
+  B(5, 'barang', 'INDOMI GRNG CAKAL', 2, 3190, 6380, 12),
+  B(6, 'barang', 'K/API SUPER BLK C', 1, 12490, 12490, 23),
+  B(7, 'barang', 'ROYCO AYAM 6X8GR', 4, 3790, 15160, 4),
+  B(8, 'barang', 'INDOF B.RACIK LOD', 1, 1890, 1890, 7), H(9, -450),
+  B(10, 'barang', 'INDOF RACIK SY/SO', 1, 1890, 1890, 8), H(11, -450),
+  B(12, 'barang', 'INDOFOOD RCK I/GR', 1, 1890, 1890, 9), H(13, -450),
+  B(14, 'barang', 'INDOFOOD B/R TEMP', 2, 1890, 3780, 5), H(15, -900),
+  B(16, 'barang', 'INDOF B/RACIK A/G', 1, 1890, 1890, 6), H(17, -450),
+  B(18, 'barang', 'BIOKUL YOG BRWN/S', 1, 7390, 7390, 0), H(19, -1480),
+  B(20, 'barang', 'KAHF DEO COOL.PWD', 1, 25190, 25190, 15), H(21, -2520),
+  B(22, 'barang', 'MIGELAS KR AYAM 6', 1, 7790, 7790, 11),
+  B(23, 'barang', 'KANZLER GOCHU JNG', 1, 14490, 14490, 24),
+  B(24, 'barang', 'PRONAS COR/B CLS5', 1, 8790, 8790, 10), H(25, -1890),
+  B(26, 'barang', 'EMINA CHE/S CEDDA', 1, 13990, 13990, 1),
+  B(27, 'barang', 'DASUIB RICE/P BLT', 1, 19790, 19790, 13),
+  B(28, 'barang', 'SEGITIGA BIRU 1 K', 1, 12990, 12990, 3),
+  B(29, 'barang', '3M S/BRITE EASY C', 1, 10490, 10490, 21),
+  B(30, 'barang', 'MARINA LOT SPF30', 1, 19790, 19790, 18), H(31, -5000),
+  B(32, 'barang', 'K/S SOAP KOJIC/AC', 1, 41690, 41690, 17), H(33, -6255),
+  B(34, 'barang', 'GIV SBN W/BENGK3X', 1, 12690, 12690, 19), H(35, -1500),
+  B(36, 'barang', '365 SOHUN100', 1, 9490, 9490, 14), H(37, -1590),
+  B(38, 'barang', 'MY BABY M/TELON60', 1, 18490, 18490, 20),
+  B(39, 'barang', 'L/SF SESAME OIL11', 1, 34290, 34290, 2), H(40, -3430),
+  // Kasir men-scan tempe dobel lalu MEMBATALKAN satu: qty negatif + potongan dibalik.
+  B(41, 'barang', 'INDOFOOD B/R TEMP', -1, 1890, -1890, 5), H(42, 450),
+  // Barang yang sengaja TIDAK discan Reza — tak tertaut ke grup mana pun.
+  B(43, 'barang', 'KANZLER NUGG SPCY', 1, 56890, 56890, -1), H(44, -17990),
+  B(45, 'total', 'Sub Total (Termasuk PPN)', 0, 0, 338900, -1),
+  B(46, 'penyesuaian', 'Pembulatan', 0, 0, 0, -1),
+  B(47, 'total', 'TOTAL', 0, 0, 338900, -1),
+  B(48, 'pembayaran', 'Pembayaran Tunai', 0, 0, 350000, -1),
+  B(49, 'pembayaran', 'KEMBALI', 0, 0, 11100, -1),
+];
+
+const hitungSuperIndo = () => reconcileHitung(grupKeranjang(CART_SUPERINDO), STRUK_SUPERINDO);
+
+test('fixture: total, selisih, dan hemat persis seperti struk asli', () => {
+  const r = hitungSuperIndo();
+  assert.strictEqual(r.totalKeranjang, 300500);
+  assert.strictEqual(r.totalStruk, 338900);
+  assert.strictEqual(r.selisih, 38400);
+  assert.strictEqual(r.hemat, 52300);
+  assert.strictEqual(r.jangkar.cocok, true);
+  assert.strictEqual(r.jangkar.takTerjelaskan, 0);
+});
+
+test('fixture: ANTI-REGRESI — nol tuduhan "ditagih lebih mahal"', () => {
+  const r = hitungSuperIndo();
+  assert.deepStrictEqual(r.rows.filter((x) => x.status === 'lebih_mahal'), []);
+});
+
+test('fixture: barang tak discan muncul sebagai baris asing dengan harga bersih', () => {
+  const r = hitungSuperIndo();
+  assert.deepStrictEqual(r.asing, [{ nama: 'KANZLER NUGG SPCY', qty: 1, net: 38900 }]);
+});
+
+test('fixture: lima bumbu racik ditagih Rp100 lebih murah dari label rak', () => {
+  const r = hitungSuperIndo();
+  const murah = r.rows.filter((x) => x.status === 'lebih_murah');
+  assert.strictEqual(murah.length, 5);
+  murah.forEach((x) => {
+    assert.strictEqual(x.totalKeranjang, 1540);
+    assert.strictEqual(x.totalStruk, 1440);
+    assert.strictEqual(x.selisih, -100);
+    assert.strictEqual(x.unitKeranjang, 1);
+    assert.strictEqual(x.unitStruk, 1);
+  });
+});
+
+test('fixture: 20 item sisanya sesuai, tak ada qty_beda / tak_ketemu / tak_pasti', () => {
+  const r = hitungSuperIndo();
+  assert.strictEqual(r.rows.length, 25);
+  assert.strictEqual(r.rows.filter((x) => x.status === 'sama').length, 20);
+  assert.strictEqual(r.rows.filter((x) => x.status === 'qty_beda').length, 0);
+  assert.strictEqual(r.rows.filter((x) => x.status === 'tak_ketemu').length, 0);
+  assert.strictEqual(r.rows.filter((x) => x.status === 'tak_pasti').length, 0);
+});
+
+test('fixture: baris void tempe tidak memicu qty_beda', () => {
+  const r = hitungSuperIndo();
+  const tempe = r.rows.find((x) => x.nama === 'INDOFOOD BUMBU RACIK TEMPE GORENG 20GR');
+  assert.strictEqual(tempe.unitStruk, 1);
+  assert.strictEqual(tempe.totalStruk, 1440);
+  assert.strictEqual(tempe.status, 'lebih_murah');
+});
+
+test('fixture: baris pembayaran tak pernah jadi baris asing', () => {
+  const r = hitungSuperIndo();
+  const nama = r.asing.map((a) => a.nama);
+  assert.ok(!nama.includes('Pembayaran Tunai'));
+  assert.ok(!nama.includes('KEMBALI'));
+});
+
+test('urutan putusan: qty diperiksa SEBELUM harga', () => {
+  const grup = grupKeranjang([{ nama: 'Indomie', harga: 3500, qty: 1 }]);
+  const r = reconcileHitung(grup, [
+    { urut: 1, peran: 'barang', nama: 'IMG', qty: 2, harga: 3500, total: 7000, cocokKe: 0 },
+    { urut: 2, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 7000, cocokKe: -1 },
+  ]);
+  assert.strictEqual(r.rows[0].status, 'qty_beda');
+  assert.strictEqual(r.rows[0].unitStruk, 2);
+  assert.strictEqual(r.rows[0].unitKeranjang, 1);
+  assert.strictEqual(r.rows[0].selisih, 3500);
+});
+
+test('promo bulk: paket 2 pcs, struk menagih penuh lalu memotong -> sesuai', () => {
+  const grup = grupKeranjang([
+    { nama: 'Indomie', harga: 9000, qty: 1, promo: { tipe: 'bulk', qtyPaket: 2 } },
+  ]);
+  const r = reconcileHitung(grup, [
+    { urut: 1, peran: 'barang', nama: 'IMG', qty: 2, harga: 5000, total: 10000, cocokKe: 0 },
+    { urut: 2, peran: 'potongan', nama: 'HEMAT', qty: 0, harga: 0, total: -1000, cocokKe: -1 },
+    { urut: 3, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 9000, cocokKe: -1 },
+  ]);
+  assert.strictEqual(r.rows[0].unitKeranjang, 2);
+  assert.strictEqual(r.rows[0].status, 'sama');
+  assert.strictEqual(r.jangkar.cocok, true);
+});
+
+test('promo gratis: beli 2 gratis 1 -> 3 barang fisik, tetap sesuai', () => {
+  const grup = grupKeranjang([
+    { nama: 'Susu', harga: 10000, qty: 1, promo: { tipe: 'gratis', qtyPaket: 3 } },
+  ]);
+  const r = reconcileHitung(grup, [
+    { urut: 1, peran: 'barang', nama: 'SUSU', qty: 3, harga: 5000, total: 15000, cocokKe: 0 },
+    { urut: 2, peran: 'potongan', nama: 'GRATIS 1', qty: 0, harga: 0, total: -5000, cocokKe: -1 },
+    { urut: 3, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 10000, cocokKe: -1 },
+  ]);
+  assert.strictEqual(r.rows[0].unitKeranjang, 3);
+  assert.strictEqual(r.rows[0].status, 'sama');
+});
+
+test('nama kembar: dua baris keranjang vs satu baris struk qty 2 -> sesuai', () => {
+  const grup = grupKeranjang([
+    { nama: 'Teh', harga: 5000, qty: 1 },
+    { nama: 'Teh', harga: 5000, qty: 1 },
+  ]);
+  const r = reconcileHitung(grup, [
+    { urut: 1, peran: 'barang', nama: 'TEH KOTAK', qty: 2, harga: 5000, total: 10000, cocokKe: 0 },
+    { urut: 2, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 10000, cocokKe: -1 },
+  ]);
+  assert.strictEqual(r.rows.length, 1);
+  assert.strictEqual(r.rows[0].unitKeranjang, 2);
+  assert.strictEqual(r.rows[0].status, 'sama');
+});
+
+test('tak_ketemu: grup keranjang tanpa baris struk', () => {
+  const grup = grupKeranjang([{ nama: 'Gula', harga: 15000, qty: 1 }]);
+  const r = reconcileHitung(grup, [
+    { urut: 1, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 0, cocokKe: -1 },
+  ]);
+  assert.strictEqual(r.rows[0].status, 'tak_ketemu');
+  assert.strictEqual(r.rows[0].unitStruk, 0);
+});
+
+test('tak_pasti: baris tertaut tapi angkanya tak terbaca', () => {
+  const grup = grupKeranjang([{ nama: 'Gula', harga: 15000, qty: 1 }]);
+  const r = reconcileHitung(grup, [
+    { urut: 1, peran: 'barang', nama: 'GULA', qty: 0, harga: 0, total: 0, cocokKe: 0 },
+    { urut: 2, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 0, cocokKe: -1 },
+  ]);
+  assert.strictEqual(r.rows[0].status, 'tak_pasti');
+});
+
+test('daftar baris kosong tak melempar', () => {
+  const r = reconcileHitung(grupKeranjang([{ nama: 'A', harga: 100, qty: 1 }]), []);
+  assert.strictEqual(r.rows[0].status, 'tak_ketemu');
+  assert.deepStrictEqual(r.asing, []);
+  assert.strictEqual(r.jangkar.cocok, false);
+});
