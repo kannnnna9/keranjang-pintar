@@ -21,3 +21,14 @@ Tanggal: 2026-09-01
 - `node --test test/reconcile.test.js test/manual-match.test.js`: 49 lulus, 0 gagal.
 - `node --test "test/*.test.js"`: 96 lulus, 0 gagal.
 - `git diff --check`: bersih.
+
+## Final fix round 2
+
+Review akhir menemukan bahwa `urut` berasal dari model dan tidak unik. Identitas internal baris asing diganti menjadi indeks sumber array hasil sanitasi (dibuat JS). Identitas ini non-enumerable, sehingga tidak mengubah schema AI, UI, snapshot, atau hasil serialisasi publik.
+
+Regresi mempergunakan dua baris asing yang nama, qty, nominal, dan `urut: 1`-nya identik. Memilih baris kedua hanya mengubah `cocokKe` pada indeks sumber kedua; baris pertama tetap asing dan item keranjang baru berstatus `sama`.
+
+Verifikasi round 2:
+
+- `node --check app.js`: lulus.
+- `node --test test/manual-match.test.js`: 5 lulus, 0 gagal.

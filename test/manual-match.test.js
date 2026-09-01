@@ -152,7 +152,7 @@ test('tambahDariStruk hanya menautkan satu baris saat nama dan qty asing berulan
     cart: [],
     lastBaris: [
       { urut: 1, peran: 'barang', nama: 'Kanzler', qty: 1, harga: 100, total: 100, cocokKe: -1 },
-      { urut: 2, peran: 'barang', nama: 'Kanzler', qty: 1, harga: 100, total: 100, cocokKe: -1 },
+      { urut: 1, peran: 'barang', nama: 'Kanzler', qty: 1, harga: 100, total: 100, cocokKe: -1 },
       { urut: 3, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 200, cocokKe: -1 },
     ],
     itemQty: (it) => Math.max(1, it.qty || 1),

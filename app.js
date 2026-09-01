@@ -1453,13 +1453,14 @@ function rcTautkanPotongan(baris) {
 function rcGrupStruk(baris, potonganPer) {
   const grup = {};
   const asing = [];
-  for (const b of baris) {
+  for (let sumber = 0; sumber < baris.length; sumber++) {
+    const b = baris[sumber];
     if (b.peran !== 'barang') continue;
     const net = b.total + (potonganPer[b.urut] || 0);
     if (b.cocokKe < 0) {
-      // `urut` internal mengikat aksi Tambahkan ke satu baris sumber; tak ikut API hasil.
+      // Indeks sumber dibuat JS, sehingga satu aksi Tambahkan selalu memilih satu baris.
       const asingBaris = { nama: b.nama, qty: Math.abs(b.qty) || 1, net };
-      Object.defineProperty(asingBaris, 'urut', { value: b.urut });
+      Object.defineProperty(asingBaris, 'sumber', { value: sumber });
       asing.push(asingBaris);
       continue;
     }
@@ -2299,9 +2300,8 @@ async function tambahDariStruk(idx) {
     perbaruiEntriRiwayat();
     lastGrup = grupKeranjang(cart);
     const grup = lastGrup.find((g) => g.rowIdx.includes(idxTambah));
-    if (grup && a.urut != null) {
-      lastBaris = lastBaris.map((b, i) => ((rcAngka(b.urut) || (i + 1)) === a.urut
-        && (b.cocokKe == null || rcAngka(b.cocokKe) < 0)
+    if (grup && Number.isInteger(a.sumber)) {
+      lastBaris = lastBaris.map((b, i) => (i === a.sumber
         ? Object.assign({}, b, { cocokKe: grup.i }) : b));
     }
     const hasil = reconcileHitung(lastGrup, lastBaris);
