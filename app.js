@@ -1319,9 +1319,68 @@ function grupKeranjang(cart) {
   return [...map.values()];
 }
 
-function rcSanitasiBaris(raw, i) { return null; }
-function rcPeriksaPeran(b) { return b; }
-function rcBatasPosisi(list) { return list; }
+const RC_PERAN = ['barang', 'potongan', 'total', 'penyesuaian', 'pembayaran', 'lain'];
+
+// Pemeriksa silang kosakata. TURUN PANGKAT dari mesin utama jadi jaring pengaman:
+// denylist selalu jebol di toko yang belum pernah didatangi, jadi yang diandalkan
+// adalah `peran` dari AI + aturan posisi. Ini cuma boleh MENURUNKAN 'barang'.
+const RC_RE_SESUAI = /^\s*(pembulatan|rounding)\b/i;
+const RC_RE_TOTAL  = /^\s*(sub\s*-?\s*total|total|jumlah\s*(bayar|belanja)?)\b/i;
+const RC_RE_POTONG = /^\s*(hemat|disc|diskon|potongan|promo|voucher|subsidi)\b/i;
+const RC_RE_BAYAR  = /(tunai|cash|kembali|kembalian|debit|kredit|qris|e-?money|flazz|brizzi|gopay|ovo|dana|shopee\s*pay|npwp|kasir|no\.?\s*trx)/i;
+
+// Angka struk: buang pemisah ribuan, pertahankan tanda minus di depan (baris void).
+function rcAngka(v) {
+  const s = String(v == null ? '' : v);
+  const negatif = /^\s*[-(]/.test(s);
+  const n = parseInt(s.replace(/\D/g, ''), 10);
+  if (isNaN(n)) return 0;
+  return negatif ? -n : n;
+}
+
+function rcSanitasiBaris(raw, i) {
+  const r = raw || {};
+  const peran = RC_PERAN.includes(r.peran) ? r.peran : 'lain';
+  const qty = rcAngka(r.qty);
+  const harga = rcAngka(r.harga);
+  let total = rcAngka(r.total);
+  // Aritmatika di JS, bukan diminta ke AI.
+  if (total === 0 && harga !== 0 && qty !== 0) total = harga * qty;
+  // `cocokKe` yang HILANG tak boleh jadi 0 — itu indeks grup pertama.
+  let cocokKe = r.cocokKe == null ? -1 : rcAngka(r.cocokKe);
+  if (peran !== 'barang') cocokKe = -1;
+  return {
+    urut: rcAngka(r.urut) || (i + 1),
+    peran,
+    nama: String(r.nama == null ? '' : r.nama).trim().slice(0, 60),
+    qty, harga, total, cocokKe,
+  };
+}
+
+function rcPeriksaPeran(baris) {
+  if (baris.peran !== 'barang') return baris;
+  const n = baris.nama;
+  let peran = 'barang';
+  if (RC_RE_SESUAI.test(n)) peran = 'penyesuaian';
+  else if (RC_RE_TOTAL.test(n)) peran = 'total';
+  else if (RC_RE_POTONG.test(n)) peran = 'potongan';
+  else if (RC_RE_BAYAR.test(n)) peran = 'pembayaran';
+  if (peran === 'barang') return baris;
+  return Object.assign({}, baris, { peran, cocokKe: -1 });
+}
+
+// Aturan POSISI — lebih kuat dari kosakata. Semua struk menaruh pembayaran SETELAH
+// total, jadi apa pun di bawah baris total terakhir tak mungkin barang. Ini yang
+// menutup baris pembayaran di toko yang formatnya belum pernah dilihat, tanpa perlu
+// tahu kata yang dipakainya.
+function rcBatasPosisi(baris) {
+  let urutTotal = -Infinity;
+  for (const b of baris) if (b.peran === 'total' && b.urut > urutTotal) urutTotal = b.urut;
+  if (urutTotal === -Infinity) return baris;
+  return baris.map((b) => (b.urut > urutTotal && b.peran === 'barang'
+    ? Object.assign({}, b, { peran: 'lain', cocokKe: -1 })
+    : b));
+}
 function rcJangkar(list) { return null; }
 function rcTautkanPotongan(list) { return null; }
 function rcGrupStruk(list, p) { return null; }
