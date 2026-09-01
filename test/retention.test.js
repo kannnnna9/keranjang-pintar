@@ -20,10 +20,14 @@ test('nextExpiry: evidence = null (permanen)', () => {
   assert.strictEqual(R.nextExpiry('evidence', 5000), null);
 });
 
-test('mapMatchStatus: sama/beda/tak_ketemu', () => {
+test('pemetaan status v2.8.0 ke durasi retensi', () => {
   assert.strictEqual(R.mapMatchStatus('sama'), 'matched_same');
-  assert.strictEqual(R.mapMatchStatus('beda'), 'matched_diff');
+  assert.strictEqual(R.mapMatchStatus('lebih_mahal'), 'matched_diff');
+  assert.strictEqual(R.mapMatchStatus('lebih_murah'), 'matched_diff');
+  assert.strictEqual(R.mapMatchStatus('qty_beda'), 'matched_diff');
   assert.strictEqual(R.mapMatchStatus('tak_ketemu'), 'pending');
+  assert.strictEqual(R.mapMatchStatus('tak_pasti'), 'pending');
+  assert.strictEqual(R.mapMatchStatus('ngawur'), 'pending');
 });
 
 test('isExpired: expiresAt null tak pernah expired', () => {
