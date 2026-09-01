@@ -251,6 +251,15 @@ test('jangkar: transkripsi terpotong -> tak cocok, selisihnya terbaca', () => {
   assert.strictEqual(jk.takTerjelaskan, 15000);
 });
 
+test('hasil: jangkar gagal memakai jumlah JS, bukan total tercetak yang tak tepercaya', () => {
+  const r = reconcileHitung(grupKeranjang([{ nama: 'A', harga: 10000, qty: 1 }]), [
+    { urut: 1, peran: 'barang', nama: 'A', qty: 1, harga: 10000, total: 10000, cocokKe: 0 },
+    { urut: 2, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 25000, cocokKe: -1 },
+  ]);
+  assert.strictEqual(r.jangkar.cocok, false);
+  assert.strictEqual(r.totalStruk, 10000);
+  assert.strictEqual(r.selisih, 0);
+});
 test('jangkar: struk tanpa baris total sama sekali -> tak bisa diverifikasi', () => {
   const jk = rcJang([{ urut: 1, peran: 'barang', nama: 'A', qty: 1, harga: 500, total: 500, cocokKe: 0 }]);
   assert.strictEqual(jk.cocok, false);

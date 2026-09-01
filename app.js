@@ -1457,7 +1457,10 @@ function rcGrupStruk(baris, potonganPer) {
     if (b.peran !== 'barang') continue;
     const net = b.total + (potonganPer[b.urut] || 0);
     if (b.cocokKe < 0) {
-      asing.push({ nama: b.nama, qty: Math.abs(b.qty) || 1, net });
+      // `urut` internal mengikat aksi Tambahkan ke satu baris sumber; tak ikut API hasil.
+      const asingBaris = { nama: b.nama, qty: Math.abs(b.qty) || 1, net };
+      Object.defineProperty(asingBaris, 'urut', { value: b.urut });
+      asing.push(asingBaris);
       continue;
     }
     const g = grup[b.cocokKe] || { unit: 0, net: 0, terbaca: true };
@@ -1505,14 +1508,14 @@ function reconcileHitung(grupCart, barisMentah) {
       status,
     };
   });
-
   const totalKeranjang = cart.reduce((a, g) => a + g.total, 0);
+  const totalStruk = jk.cocok ? jk.jangkar : jk.hitungJS;
   return {
     rows,
     asing,
     totalKeranjang,
-    totalStruk: jk.jangkar,
-    selisih: jk.jangkar - totalKeranjang,
+    totalStruk,
+    selisih: totalStruk - totalKeranjang,
     hemat: Math.abs(jk.potongan),
     jangkar: { cocok: jk.cocok, takTerjelaskan: jk.takTerjelaskan },
   };
@@ -2261,8 +2264,7 @@ async function manualMatch(i) {
   const totalKeranjang = row && row.totalKeranjang !== undefined ? row.totalKeranjang : hargaRak;
   const status = Number.isNaN(hargaKasir) ? 'tak_ketemu'
     : hargaKasir === totalKeranjang ? 'sama'
-      : Array.isArray(lastReconcile) ? 'beda'
-        : hargaKasir > totalKeranjang ? 'lebih_mahal' : 'lebih_murah';
+      : hargaKasir > totalKeranjang ? 'lebih_mahal' : 'lebih_murah';
   await applyReconcileResult({
     rows: [{ i: grup.i, nama, hargaRak, totalStruk: Number.isNaN(hargaKasir) ? 0 : hargaKasir, status }],
   });
@@ -2290,11 +2292,18 @@ async function tambahDariStruk(idx) {
     const a = lastReconcile.asing[idx];
     if (!a) return;
     const { harga, qty } = barisDariStruk(a.net, a.qty);
+    const idxTambah = cart.length;
     cart.push({ nama: a.nama, harga, qty, promo: null, dariStruk: true });
     persistCart();
     renderCart();
     perbaruiEntriRiwayat();
     lastGrup = grupKeranjang(cart);
+    const grup = lastGrup.find((g) => g.rowIdx.includes(idxTambah));
+    if (grup && a.urut != null) {
+      lastBaris = lastBaris.map((b, i) => ((rcAngka(b.urut) || (i + 1)) === a.urut
+        && (b.cocokKe == null || rcAngka(b.cocokKe) < 0)
+        ? Object.assign({}, b, { cocokKe: grup.i }) : b));
+    }
     const hasil = reconcileHitung(lastGrup, lastBaris);
     await applyReconcileResult(hasil);
     renderReconcile(hasil);

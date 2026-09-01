@@ -26,10 +26,10 @@ test('manualMatch meneruskan hasil v2 agar retention foto memakai indeks grup', 
   await ctx.manualMatch('Teh');
 
   assert.deepStrictEqual(received, {
-    rows: [{ i: 4, nama: 'Teh', hargaRak: 100, totalStruk: 120, status: 'beda' }],
+    rows: [{ i: 4, nama: 'Teh', hargaRak: 100, totalStruk: 120, status: 'lebih_mahal' }],
   });
   assert.strictEqual(ctx.lastReconcile[0].hargaKasir, 120);
-  assert.strictEqual(ctx.lastReconcile[0].status, 'beda');
+  assert.strictEqual(ctx.lastReconcile[0].status, 'lebih_mahal');
   assert.strictEqual(rendered, rows);
 });
 
@@ -109,4 +109,66 @@ test('tambahDariStruk mengabaikan klik kedua selama rekonsiliasi pertama berjala
   lanjutkan();
   await Promise.all([pertama, kedua]);
   assert.strictEqual(ctx.cart.length, 1);
+});
+
+test('tambahDariStruk menautkan baris asing yang dipilih ke grup baru lewat rekonsiliasi nyata', async () => {
+  const rulesStart = source.indexOf('/* ==== RECONCILE RULES (start) ==== */');
+  const rulesEnd = source.indexOf('/* ==== RECONCILE RULES (end) ==== */');
+  const rules = source.slice(rulesStart, rulesEnd);
+  let rendered;
+  const ctx = {
+    cart: [{ nama: 'Lama', harga: 100, qty: 1 }],
+    lastBaris: [
+      { urut: 1, peran: 'barang', nama: 'LAMA', qty: 1, harga: 100, total: 100, cocokKe: 0 },
+      { urut: 2, peran: 'barang', nama: 'Kanzler', qty: 2, harga: 1440, total: 2880, cocokKe: -1 },
+      { urut: 3, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 2980, cocokKe: -1 },
+    ],
+    itemQty: (it) => Math.max(1, it.qty || 1),
+    itemSub: (it) => it.harga * Math.max(1, it.qty || 1),
+    persistCart: () => {}, renderCart: () => {}, perbaruiEntriRiwayat: () => {},
+    applyReconcileResult: async () => {},
+    renderReconcile: (hasil) => { ctx.lastReconcile = hasil; rendered = JSON.parse(JSON.stringify(hasil)); },
+    showToast: () => {},
+  };
+  vm.runInNewContext(rules + '\n' + body + '\nthis.tambahDariStruk = tambahDariStruk;', ctx);
+  ctx.lastGrup = ctx.grupKeranjang(ctx.cart);
+  ctx.lastReconcile = ctx.reconcileHitung(ctx.lastGrup, ctx.lastBaris);
+
+  await ctx.tambahDariStruk(0);
+  await ctx.tambahDariStruk(0);
+
+  assert.strictEqual(ctx.cart.length, 2);
+  assert.strictEqual(ctx.lastBaris[1].cocokKe, 1);
+  assert.strictEqual(rendered.rows[1].status, 'sama');
+  assert.deepStrictEqual(rendered.asing, []);
+});
+
+test('tambahDariStruk hanya menautkan satu baris saat nama dan qty asing berulang', async () => {
+  const rulesStart = source.indexOf('/* ==== RECONCILE RULES (start) ==== */');
+  const rulesEnd = source.indexOf('/* ==== RECONCILE RULES (end) ==== */');
+  const rules = source.slice(rulesStart, rulesEnd);
+  let rendered;
+  const ctx = {
+    cart: [],
+    lastBaris: [
+      { urut: 1, peran: 'barang', nama: 'Kanzler', qty: 1, harga: 100, total: 100, cocokKe: -1 },
+      { urut: 2, peran: 'barang', nama: 'Kanzler', qty: 1, harga: 100, total: 100, cocokKe: -1 },
+      { urut: 3, peran: 'total', nama: 'TOTAL', qty: 0, harga: 0, total: 200, cocokKe: -1 },
+    ],
+    itemQty: (it) => Math.max(1, it.qty || 1),
+    itemSub: (it) => it.harga * Math.max(1, it.qty || 1),
+    persistCart: () => {}, renderCart: () => {}, perbaruiEntriRiwayat: () => {},
+    applyReconcileResult: async () => {},
+    renderReconcile: (hasil) => { rendered = JSON.parse(JSON.stringify(hasil)); },
+    showToast: () => {},
+  };
+  vm.runInNewContext(rules + '\n' + body + '\nthis.tambahDariStruk = tambahDariStruk;', ctx);
+  ctx.lastGrup = ctx.grupKeranjang(ctx.cart);
+  ctx.lastReconcile = ctx.reconcileHitung(ctx.lastGrup, ctx.lastBaris);
+
+  await ctx.tambahDariStruk(1);
+
+  assert.strictEqual(ctx.lastBaris[0].cocokKe, -1);
+  assert.strictEqual(ctx.lastBaris[1].cocokKe, 0);
+  assert.deepStrictEqual(rendered.asing, [{ nama: 'Kanzler', qty: 1, net: 100 }]);
 });
