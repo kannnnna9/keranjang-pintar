@@ -2172,9 +2172,9 @@ function renderReconcile(hasil) {
   saveReconcileToHistory(hasil);
 }
 
-function saveReconcileToHistory(rows) {
+function saveReconcileToHistory(hasil) {
   try {
-    const snapshot = buildReconcileSnapshot(rows, Date.now());
+    const snapshot = buildReconcileSnapshot(hasil, Date.now());
     const list = loadHistory();
     if (!list.length) return;
     let entry = list.find((e) => e.sessionId && e.sessionId === cartSessionId);
@@ -2186,17 +2186,30 @@ function saveReconcileToHistory(rows) {
   }
 }
 
-function buildReconcileSnapshot(rows, now) {
-  const list = Array.isArray(rows) ? rows : [];
-  let totalRak = 0, totalKasir = 0;
-  const slim = list.map((r) => {
-    const hargaRak = r.hargaRak || 0;
-    const hargaKasir = (r.hargaKasir === null || r.hargaKasir === undefined) ? null : r.hargaKasir;
-    totalRak += hargaRak;
-    totalKasir += (hargaKasir === null ? hargaRak : hargaKasir);
-    return { nama: r.nama, hargaRak, hargaKasir, status: r.status };
-  });
-  return { at: now, totalRak, totalKasir, selisih: totalKasir - totalRak, rows: slim };
+function buildReconcileSnapshot(hasil, now) {
+  const h = hasil || {};
+  const rows = Array.isArray(h.rows) ? h.rows : [];
+  return {
+    v: 2,
+    at: now,
+    totalKeranjang: h.totalKeranjang || 0,
+    totalStruk: h.totalStruk || 0,
+    selisih: h.selisih || 0,
+    hemat: h.hemat || 0,
+    jangkar: {
+      cocok: !!(h.jangkar && h.jangkar.cocok),
+      takTerjelaskan: (h.jangkar && h.jangkar.takTerjelaskan) || 0,
+    },
+    rows: rows.map((r) => ({
+      nama: r.nama,
+      unitKeranjang: r.unitKeranjang,
+      unitStruk: r.unitStruk,
+      totalKeranjang: r.totalKeranjang,
+      totalStruk: r.totalStruk,
+      status: r.status,
+    })),
+    asing: (Array.isArray(h.asing) ? h.asing : []).map((a) => ({ nama: a.nama, qty: a.qty, net: a.net })),
+  };
 }
 function wireReconcileButtons() {
   const body = $('reconcile-body');
@@ -2430,22 +2443,47 @@ async function showHistoryDetail(i) {
   $('btn-del-hist').dataset.index = i;
 
   const rcBox = $('hist-detail-reconcile');
-  rcBox.hidden = true; rcBox.innerHTML = '';
-  try {
+  if (rcBox) {
     const rc = sesi.reconcile;
-    if (rc && Array.isArray(rc.rows)) {
-      const beda = rc.rows.filter((r) => r.status === 'beda');
-      const sama = rc.rows.filter((r) => r.status === 'sama');
-      const nf = rc.rows.filter((r) => r.status === 'tak_ketemu');
-      const bedaTxt = beda.map((r) => `${r.nama} ${rupiah((r.hargaKasir || 0) - r.hargaRak)}`).join(' · ');
+    if (!rc) {
+      rcBox.hidden = true;
+    } else if (rc.v !== 2) {
+      // Snapshot v1 (sebelum v2.8.0): angkanya memang salah (menjumlahkan tanpa qty)
+      // dan TIDAK bisa dihitung ulang — hargaKasir lama adalah nilai bruto. Dirender
+      // apa adanya supaya data riwayat lama tak hilang.
+      rcBox.hidden = false;
+      rcBox.innerHTML =
+        `<div class="hist-reconcile-head">Hasil cek struk (format lama)</div>` +
+        `<div class="settings-note">Rak ${rupiah(rc.totalRak || 0)} → Kasir ${rupiah(rc.totalKasir || 0)} · Selisih ${rupiah(rc.selisih || 0)}</div>`;
+    } else {
+      rcBox.hidden = false;
+      const hitung = (s) => rc.rows.filter((r) => r.status === s);
+      const rinci = (arr, n) => arr.slice(0, n).map((r) => `${r.nama} ${rupiah(r.totalStruk)}`).join(' · ') +
+        (arr.length > n ? ` · dan ${arr.length - n} lain` : '');
+      const jumlahRp = (arr) => arr.reduce((a, r) => a + Math.abs(r.totalStruk - r.totalKeranjang), 0);
+      const blok = [];
+      const mahal = hitung('lebih_mahal');
+      if (mahal.length) blok.push(`<div class="rc-hist-row"><strong>Lebih mahal (${mahal.length})</strong> ${rinci(mahal, 3)}</div>`);
+      if (rc.asing && rc.asing.length) {
+        blok.push(`<div class="rc-hist-row"><strong>Tak discan (${rc.asing.length})</strong> ` +
+          rc.asing.slice(0, 3).map((a) => `${a.nama} ${rupiah(a.net)}`).join(' · ') +
+          (rc.asing.length > 3 ? ` · dan ${rc.asing.length - 3} lain` : '') + `</div>`);
+      }
+      const qtyBeda = hitung('qty_beda');
+      if (qtyBeda.length) blok.push(`<div class="rc-hist-row"><strong>Jumlah beda (${qtyBeda.length})</strong> ${rinci(qtyBeda, 3)}</div>`);
+      const nf = hitung('tak_ketemu').concat(hitung('tak_pasti'));
+      if (nf.length) blok.push(`<div class="rc-hist-row"><strong>Tak ketemu (${nf.length})</strong> ${rinci(nf, 3)}</div>`);
+      const murah = hitung('lebih_murah');
+      if (murah.length) blok.push(`<div class="rc-hist-row"><strong>Lebih murah (${murah.length})</strong> total ${rupiah(jumlahRp(murah))}</div>`);
+      const sama = hitung('sama');
+      if (sama.length) blok.push(`<div class="rc-hist-row"><strong>Sesuai (${sama.length})</strong></div>`);
       rcBox.innerHTML =
         `<div class="hist-reconcile-head">Hasil cek struk</div>` +
-        `<div>Rak ${rupiah(rc.totalRak)} → Kasir ${rupiah(rc.totalKasir)} · <span class="${rc.selisih > 0 ? 'rc-diff' : ''}">Selisih ${rupiah(rc.selisih)}</span></div>` +
-        (beda.length ? `<div>⚠ Beda (${beda.length}): ${bedaTxt}</div>` : '') +
-        `<div>✓ Sesuai (${sama.length})${nf.length ? ` · ? Tak terdeteksi (${nf.length})` : ''}</div>`;
-      rcBox.hidden = false;
+        `<div class="settings-note">Keranjang ${rupiah(rc.totalKeranjang)} → Struk ${rupiah(rc.totalStruk)}</div>` +
+        `<div class="settings-note">Selisih ${rupiah(rc.selisih)}${rc.hemat ? ` · Hemat ${rupiah(rc.hemat)}` : ''}</div>` +
+        blok.join('');
     }
-  } catch (_) { rcBox.hidden = true; }
+  }
 
   openSheet('sheet-history-detail');
 }

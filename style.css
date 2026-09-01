@@ -87,6 +87,8 @@ body {
   font-size: .92em; color: var(--text-dim);
 }
 .hist-reconcile-head { font-weight: 600; color: var(--text); }
+.rc-hist-row { margin-top: 6px; font-size: 13px; color: var(--text-dim); }
+.rc-hist-row strong { color: var(--text); }
 .photo-full { width: 100%; border-radius: var(--radius-sm); }
 .hist-foto { background: none; border: 1px solid var(--border); color: var(--accent); margin-left: 8px; min-height: 44px; min-width: 44px; border-radius: var(--radius-sm); cursor: pointer; }
 .hist-foto:hover { border-color: var(--accent); color: var(--accent-hov); }
