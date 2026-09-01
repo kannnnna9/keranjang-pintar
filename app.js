@@ -1285,6 +1285,50 @@ function promoChips(norm) {
 }
 /* ==== PROMO RULES (end) ==== */
 
+/* ==== RECONCILE RULES (start) ==== */
+/* Seluruh aritmatika & putusan rekonsiliasi struk. Sengaja bebas DOM dan bebas
+   dependensi (kecuali itemQty/itemSub) supaya bisa diuji di node:vm tanpa foto
+   struk dan tanpa memanggil Gemini. Prinsipnya sama dengan PROMO RULES: AI hanya
+   MENYALIN apa yang tertulis di struk; setiap keputusan terjadi di sini. */
+
+// Jumlah barang FISIK, bukan jumlah baris keranjang. Untuk promo paket, satu baris
+// keranjang = satu paket berisi qtyPaket barang (qty-nya dikunci 1 di picker), jadi
+// struk yang menulis "qty 2" itu BENAR dan bukan selisih jumlah.
+function unitFisik(it) {
+  const paket = it.promo && it.promo.qtyPaket > 0 ? it.promo.qtyPaket : 1;
+  return itemQty(it) * paket;
+}
+
+// Kelompokkan keranjang jadi grup produk (kunci = nama persis). Wajib, bukan
+// pilihan: struk menggabungkan SKU sama jadi satu baris, dan baris void (qty
+// negatif) hanya bisa dinetralkan lewat penjumlahan.
+// `i` adalah SATU-SATUNYA kunci penautan yang dipakai selanjutnya — penautan lewat
+// nama ditinggalkan karena nama kembar saling menimpa.
+function grupKeranjang(cart) {
+  const map = new Map();
+  (Array.isArray(cart) ? cart : []).forEach((it, idx) => {
+    const g = map.get(it.nama) || {
+      i: map.size, nama: it.nama, unit: 0, total: 0, rowIdx: [], adaPromo: false,
+    };
+    g.unit += unitFisik(it);
+    g.total += itemSub(it);   // harga paket × qty → benar untuk semua jenis promo
+    g.rowIdx.push(idx);
+    if (it.promo) g.adaPromo = true;
+    map.set(it.nama, g);
+  });
+  return [...map.values()];
+}
+
+function rcSanitasiBaris(raw, i) { return null; }
+function rcPeriksaPeran(b) { return b; }
+function rcBatasPosisi(list) { return list; }
+function rcJangkar(list) { return null; }
+function rcTautkanPotongan(list) { return null; }
+function rcGrupStruk(list, p) { return null; }
+function reconcileHitung(grupCart, barisMentah) { return null; }
+function barisDariStruk(net, qty) { return null; }
+/* ==== RECONCILE RULES (end) ==== */
+
 // Ekstraksi JSON dari balasan Gemini. Sanitasi & aturan TIDAK di sini —
 // itu tugas normalizePromo, yang dipanggil di scanLabel supaya mode BYOK dan
 // mode Demo (yang tak melewati fungsi ini) sama-sama kena aturannya.
