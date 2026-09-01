@@ -621,6 +621,38 @@ function openCamera() {
 /* ============================================================
    KAMERA
    ============================================================ */
+/* ==== CAMERA ZOOM (start) ==== */
+/* Tangga zoom + baca-balik. Sengaja bebas DOM dan bebas MediaStream supaya bisa
+   diuji di node:vm tanpa kamera. Prinsipnya sama dengan PROMO RULES: yang bisa
+   dites di meja tidak dititipkan ke hardware. */
+
+const ZOOM_TANGGA = [1, 2, 4];
+
+// caps = MediaTrackCapabilities.zoom. Satuannya implementation-specific: ada HP
+// yang melaporkan {min:1,max:10}, ada yang {min:100,max:400} (100 = tanpa zoom).
+// Yang dijamin spesifikasi cuma `min` = tanpa zoom, jadi tangga "×" diturunkan
+// dari min sebagai patokan 1× — bukan dari angka mutlak.
+// Kembalikan [] artinya: sembunyikan baris tombol.
+function zoomLevels(caps) {
+  if (!caps) return [];
+  const min = Number(caps.min), max = Number(caps.max);
+  if (!isFinite(min) || !isFinite(max) || max <= min) return [];
+  const base = min > 0 ? min : 1; // min:0 → satuan ambigu, anggap pengali mutlak
+  const out = [];
+  for (const x of ZOOM_TANGGA) if (base * x <= max) out.push({ x, nilai: base * x });
+  return out.length > 1 ? out : []; // cuma 1× = tak ada gunanya
+}
+
+// applyConstraints({advanced}) bersifat best-effort: permintaan yang diabaikan
+// TIDAK melempar error. Jadi baca-balik getSettings().zoom adalah satu-satunya
+// cara tahu permintaannya benar-benar dituruti.
+function zoomDiterima(diminta, aktual, step) {
+  if (aktual == null) return true; // HP tak melaporkan → percaya applyConstraints
+  const toleransi = Number(step) > 0 ? Number(step) : 1e-6;
+  return Math.abs(Number(aktual) - Number(diminta)) <= toleransi;
+}
+/* ==== CAMERA ZOOM (end) ==== */
+
 async function startCamera() {
   const errBox = $('cam-error');
   errBox.hidden = true;
