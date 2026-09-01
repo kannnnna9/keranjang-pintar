@@ -5,6 +5,16 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/lang/id/).
 
+## [2.7.0] - 2026-09-01
+
+### Ditambahkan
+- Tombol zoom `1× 2× 4×` di layar scan, jadi label harga bisa dijepret dari jarak wajar tanpa menempelkan HP ke rak. Tingkat yang muncul mengikuti kemampuan kamera HP: yang cuma sanggup 2× menampilkan `1× 2×`, yang tak punya zoom tak menampilkan barisnya sama sekali.
+- Tingkat zoom bertahan antar-jepret selama sesi belanja, jadi tak perlu diatur ulang tiap barang. Kembali ke `1×` saat app dimuat ulang.
+- Baris "Kamera" di Pengaturan menampilkan resolusi dan rentang zoom yang benar-benar didukung HP — dipakai untuk mendiagnosis kalau hasil zoom terasa kurang tajam.
+
+### Diperbaiki
+- Kamera kini diminta pada resolusi setinggi mungkin. Sebelumnya tak ada permintaan resolusi sama sekali, sehingga browser sering memberi 640×480 dan huruf di label tinggal sedikit piksel — itu sebab utama harus menjepret dari dekat. Ukuran gambar yang dikirim ke AI tidak berubah, jadi kecepatan scan tetap sama.
+
 ## [2.6.0] - 2026-07-29
 
 ### Diperbaiki

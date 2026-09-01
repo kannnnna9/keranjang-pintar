@@ -114,7 +114,7 @@ function getDemoDeviceId() {
 
 // Versi aplikasi. Satu sumber kebenaran: teks versi di halaman pengaturan
 // diisi dari sini saat init, jadi cukup ubah angka ini tiap rilis.
-const APP_VERSION = 'v2.6.0';
+const APP_VERSION = 'v2.7.0';
 const NOTE_STORAGE = 'kp_shopping_note';
 const NOTE_MAX_ITEMS = 100;
 const NOTE_MAX_TEXT = 80;
