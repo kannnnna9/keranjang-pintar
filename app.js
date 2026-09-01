@@ -151,13 +151,33 @@ const PROMPT = [
 ].join(' ');
 
 const RECONCILE_PROMPT = [
-  'Kamu diberi FOTO STRUK KASIR dan DAFTAR BELANJA (nama + harga rak).',
-  'Baca harga tiap item di struk lalu cocokkan ke daftar belanja.',
+  'Kamu diberi FOTO STRUK KASIR dan DAFTAR BELANJA.',
+  'TUGASMU MENYALIN, BUKAN MENILAI. JANGAN menghitung apa pun.',
+  'Laporkan hanya angka yang TERTULIS di struk.',
+  'Salin SEMUA baris struk dalam urutan tercetak dari atas ke bawah, tanpa',
+  'melewatkan baris apa pun — termasuk baris potongan, total, dan pembayaran.',
+  'urut = nomor urutan baris, mulai dari 1.',
+  'peran tiap baris:',
+  "'barang' = baris produk.",
+  "'potongan' = baris yang MENGURANGI harga (HEMAT, DISC, DISKON, PROMO,",
+  'VOUCHER, SUBSIDI, apa pun namanya).',
+  "'total' = baris penjumlahan (Sub Total, TOTAL, JUMLAH BAYAR).",
+  "'penyesuaian' = Pembulatan dan sejenisnya.",
+  "'pembayaran' = tunai, kembalian, kartu, QRIS, e-wallet.",
+  "'lain' = header kolom, alamat toko, NPWP, nomor kasir, teks promosi.",
+  'Baris potongan biasanya TIDAK punya nama produk dan milik baris barang di',
+  'ATASNYA. Jangan mengarang nama untuknya — biarkan nama kosong.',
+  'qty BOLEH NEGATIF bila kasir membatalkan barang; salin apa adanya,',
+  'termasuk total yang negatif.',
+  'harga = kolom harga satuan bila tercetak. total = kolom total baris bila',
+  'tercetak. Isi 0 bila tak tercetak.',
+  'cocokKe = indeks i dari DAFTAR BELANJA yang paling cocok dengan baris barang ini.',
   'Nama di struk sering disingkat atau berupa kode, misalnya "IMG SPESIAL 85"',
   '= "Indomie Goreng Spesial 85g".',
-  'Untuk tiap item daftar belanja, tentukan hargaKasir dari struk dan status:',
-  '"sama" bila hargaKasir sama dengan hargaRak, "beda" bila berbeda,',
-  'dan "tak_ketemu" bila item tak ada di struk. Balas HANYA JSON array.',
+  'Isi -1 bila tak ada yang cocok — JANGAN dipaksa cocok.',
+  'cocokKe hanya untuk peran barang; peran lain selalu -1.',
+  'Angka tanpa titik/koma. Contoh: 16500 bukan 16.500.',
+  'Balas HANYA JSON array.',
 ].join(' ');
 
 /* ---------- State ---------- */
@@ -1062,11 +1082,11 @@ async function callGemini(apiKey, base64, timeoutMs) {
   return parseResult(text);
 }
 
-async function reconcileReceipt(base64Struk, cartData) {
+async function reconcileReceipt(base64Struk, daftarBelanja) {
   const body = {
     contents: [{
       parts: [
-        { text: RECONCILE_PROMPT + '\n\nDAFTAR BELANJA:\n' + JSON.stringify(cartData) },
+        { text: RECONCILE_PROMPT + '\n\nDAFTAR BELANJA:\n' + JSON.stringify(daftarBelanja) },
         { inline_data: { mime_type: 'image/jpeg', data: base64Struk } },
       ],
     }],
@@ -1077,18 +1097,23 @@ async function reconcileReceipt(base64Struk, cartData) {
         items: {
           type: 'OBJECT',
           properties: {
-            nama: { type: 'STRING' },
-            hargaRak: { type: 'INTEGER' },
-            hargaKasir: { type: 'INTEGER' },
-            status: { type: 'STRING', enum: ['sama', 'beda', 'tak_ketemu'] },
+            urut:    { type: 'INTEGER' },
+            // enum WAJIB dipasang — pagar termurah yang ada (pelajaran promo v2).
+            peran:   { type: 'STRING', enum: ['barang', 'potongan', 'total', 'penyesuaian', 'pembayaran', 'lain'] },
+            nama:    { type: 'STRING' },
+            qty:     { type: 'INTEGER' },
+            harga:   { type: 'INTEGER' },
+            total:   { type: 'INTEGER' },
+            cocokKe: { type: 'INTEGER' },
           },
-          required: ['nama', 'status'],
+          required: ['urut', 'peran', 'total'],
         },
       },
     },
   };
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 20000);
+  // 30s (naik dari 20s): output kini sepanjang STRUK, bukan sepanjang keranjang.
+  const timer = setTimeout(() => ctrl.abort(), 30000);
   recordRequest();
   try {
     const res = await fetch(`${API_BASE}/${MODEL}:generateContent`, {
