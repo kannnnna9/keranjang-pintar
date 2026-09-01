@@ -34,3 +34,9 @@
   melepaskannya dalam `finally`, termasuk ketika pembaruan gagal.
 - Tes serentak baru mula-mula RED (`2 !== 1`), lalu GREEN; suite penuh lulus
   91 pass, 0 fail.
+
+## Follow-up ceiling guard
+
+- Guard global diberi komentar `ponytail:`: ia sengaja menserialkan semua aksi
+  Tambahkan karena state keranjang, riwayat, dan sesi dipakai bersama. Naikkan
+  menjadi guard per-item hanya jika UI perlu menerima beberapa item serentak.

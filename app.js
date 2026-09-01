@@ -2267,6 +2267,8 @@ async function manualMatch(i) {
 
 // Masukkan baris struk asing ke keranjang, lalu hitung ulang secara lokal dari
 // transkripsi yang sama. Tidak ada panggilan Gemini maupun kuota tambahan.
+// ponytail: serialkan semua Tambahkan karena cart/riwayat/state sesi bersama;
+// gunakan guard per-item hanya bila UI perlu menerima beberapa item bersamaan.
 let tambahDariStrukSedangProses = false;
 async function tambahDariStruk(idx) {
   if (tambahDariStrukSedangProses || !lastReconcile || !lastBaris) return;
