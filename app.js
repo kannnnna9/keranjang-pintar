@@ -2090,39 +2090,85 @@ function showReconcileError(message) {
   $('reconcile-body').innerHTML = '';
 }
 
-function photoIdByNama(nama) {
-  const item = cart.find((entry) => entry.nama === nama && entry.photoId);
-  return item ? item.photoId : null;
+const RC_JUDUL = {
+  lebih_mahal: 'Ditagih lebih mahal',
+  lebih_murah: 'Ditagih lebih murah',
+  qty_beda:    'Jumlah beda',
+  tak_ketemu:  'Tak ada di struk',
+  tak_pasti:   'Tak pasti',
+  sama:        'Sesuai',
+};
+
+function photoIdByGrup(i) {
+  if (!lastGrup) return null;
+  const g = lastGrup.find((x) => x.i === i);
+  if (!g) return null;
+  for (const idx of g.rowIdx) if (cart[idx] && cart[idx].photoId) return cart[idx].photoId;
+  return null;
 }
 
-function renderReconcile(result) {
-  lastReconcile = result;
-  const beda = result.filter((row) => row.status === 'beda');
-  const sama = result.filter((row) => row.status === 'sama');
-  const notFound = result.filter((row) => row.status === 'tak_ketemu');
-  const totalRak = result.reduce((sum, row) => sum + (row.hargaRak || 0), 0);
-  const totalKasir = result.reduce((sum, row) => sum + (row.hargaKasir || row.hargaRak || 0), 0);
-  const selisih = totalKasir - totalRak;
+function renderReconcile(hasil) {
+  lastReconcile = hasil;
+  const jk = hasil.jangkar;
   $('reconcile-summary').innerHTML =
-    `<div>Total rak ${rupiah(totalRak)} · Kasir ${rupiah(totalKasir)}</div>` +
-    `<div class="${selisih > 0 ? 'rc-diff' : ''}">Selisih ${rupiah(selisih)}</div>`;
+    `<div>Keranjang ${rupiah(hasil.totalKeranjang)} → Struk ${rupiah(hasil.totalStruk)}</div>` +
+    `<div class="${hasil.selisih > 0 ? 'rc-diff' : ''}">Selisih ${rupiah(hasil.selisih)}` +
+    (hasil.hemat ? ` · Hemat ${rupiah(hasil.hemat)}` : '') + `</div>` +
+    (jk.cocok
+      ? `<div class="rc-anchor-ok">Angka struk konsisten ✓</div>`
+      : `<div class="rc-anchor-bad">⚠ ${rupiah(jk.takTerjelaskan)} tak terjelaskan — coba foto ulang struknya</div>`);
 
-  const rowDiff = (row) => {
-    const photoId = photoIdByNama(row.nama);
-    return `<li class="rc-row rc-beda"><span class="rc-nama">${row.nama}</span>` +
-      `<span class="rc-price">Rak ${rupiah(row.hargaRak)} → Kasir ${rupiah(row.hargaKasir)} (${rupiah(row.hargaKasir - row.hargaRak)})</span>` +
-      (photoId ? `<span class="rc-actions"><button class="rc-foto" data-id="${photoId}" type="button">Foto</button><button class="rc-bukti" data-id="${photoId}" type="button">Bukti</button></span>` : '') +
-      '</li>';
+  const baris = (row) => {
+    const pid = photoIdByGrup(row.i);
+    const aksi = pid
+      ? `<span class="rc-actions"><button class="rc-foto" data-id="${pid}" type="button">Foto</button><button class="rc-bukti" data-id="${pid}" type="button">Bukti</button></span>`
+      : '';
+    let angka;
+    if (row.status === 'tak_ketemu') angka = `Keranjang ${rupiah(row.totalKeranjang)}`;
+    else if (row.status === 'qty_beda') angka = `Struk ${row.unitStruk} vs scan ${row.unitKeranjang} · ${rupiah(row.selisih)}`;
+    else if (row.status === 'sama') angka = `${rupiah(row.totalStruk)} ✓`;
+    else if (row.status === 'tak_pasti') angka = `Keranjang ${rupiah(row.totalKeranjang)} · struk tak terbaca`;
+    else angka = `Keranjang ${rupiah(row.totalKeranjang)} → Struk ${rupiah(row.totalStruk)} (${rupiah(row.selisih)})`;
+    const li = document.createElement('li');
+    li.className = 'rc-row' + (row.status === 'lebih_mahal' ? ' rc-beda' : '') +
+      (row.status === 'tak_ketemu' || row.status === 'tak_pasti' ? ' rc-nf' : '');
+    li.innerHTML = `<span class="rc-nama"></span><span class="rc-price">${angka}</span>` +
+      (row.status === 'tak_ketemu' || row.status === 'tak_pasti'
+        ? `<span class="rc-actions"><button class="rc-manual" data-i="${row.i}" type="button">Cocokkan manual</button></span>`
+        : row.status === 'qty_beda'
+          ? `<span class="rc-actions"><button class="rc-qty" data-i="${row.i}" type="button">Perbaiki jumlah</button></span>`
+          : aksi);
+    li.querySelector('.rc-nama').textContent = row.nama;
+    return li.outerHTML;
   };
-  const rowSame = (row) => `<li class="rc-row"><span class="rc-nama">${row.nama}</span><span class="rc-price">${rupiah(row.hargaKasir || row.hargaRak)} ✓</span></li>`;
-  const rowNotFound = (row) => `<li class="rc-row rc-nf"><span class="rc-nama">${row.nama}</span><span class="rc-price">Rak ${rupiah(row.hargaRak)}</span><span class="rc-actions"><button class="rc-manual" data-nama="${row.nama}" type="button">Cocokkan manual</button></span></li>`;
-  let html = '';
-  if (beda.length) html += `<h3>Beda harga (${beda.length})</h3><ul class="rc-list">${beda.map(rowDiff).join('')}</ul>`;
-  if (notFound.length) html += `<h3>Tak terdeteksi (${notFound.length})</h3><ul class="rc-list">${notFound.map(rowNotFound).join('')}</ul>`;
-  if (sama.length) html += `<h3>Sesuai (${sama.length})</h3><button id="btn-del-same" class="btn btn-ghost" type="button">Hapus semua foto sesuai</button><ul class="rc-list rc-collapse">${sama.map(rowSame).join('')}</ul>`;
+
+  const kelompok = (status) => {
+    const isi = hasil.rows.filter((r) => r.status === status);
+    if (!isi.length) return '';
+    const tutup = (status === 'lebih_murah' || status === 'sama') ? ' rc-collapse' : '';
+    const tombol = status === 'sama'
+      ? '<button id="btn-del-same" class="btn btn-ghost" type="button">Hapus semua foto sesuai</button>' : '';
+    return `<h3>${RC_JUDUL[status]} (${isi.length})</h3>${tombol}<ul class="rc-list${tutup}">${isi.map(baris).join('')}</ul>`;
+  };
+
+  const barisAsing = (a, idx) => {
+    const li = document.createElement('li');
+    li.className = 'rc-row rc-asing';
+    li.innerHTML = `<span class="rc-nama"></span>` +
+      `<span class="rc-price">${a.qty > 1 ? a.qty + ' × ' : ''}${rupiah(a.net)}</span>` +
+      `<span class="rc-actions"><button class="rc-add" data-idx="${idx}" type="button">Tambahkan</button></span>`;
+    li.querySelector('.rc-nama').textContent = a.nama;
+    return li.outerHTML;
+  };
+  const grupAsing = hasil.asing.length
+    ? `<h3>Ada di struk, tak discan (${hasil.asing.length})</h3><ul class="rc-list">${hasil.asing.map(barisAsing).join('')}</ul>`
+    : '';
+
+  const html = kelompok('lebih_mahal') + grupAsing + kelompok('qty_beda') +
+    kelompok('tak_ketemu') + kelompok('tak_pasti') + kelompok('lebih_murah') + kelompok('sama');
   $('reconcile-body').innerHTML = html || '<p class="muted">Tidak ada hasil rekonsiliasi.</p>';
   wireReconcileButtons();
-  saveReconcileToHistory(result);
+  saveReconcileToHistory(hasil);
 }
 
 function saveReconcileToHistory(rows) {
@@ -2152,9 +2198,12 @@ function buildReconcileSnapshot(rows, now) {
   return { at: now, totalRak, totalKasir, selisih: totalKasir - totalRak, rows: slim };
 }
 function wireReconcileButtons() {
-  $('reconcile-body').querySelectorAll('.rc-foto').forEach((button) => button.addEventListener('click', () => openPhoto(button.dataset.id)));
-  $('reconcile-body').querySelectorAll('.rc-bukti').forEach((button) => button.addEventListener('click', () => markEvidence(button.dataset.id, button)));
-  $('reconcile-body').querySelectorAll('.rc-manual').forEach((button) => button.addEventListener('click', () => manualMatch(button.dataset.nama)));
+  const body = $('reconcile-body');
+  body.querySelectorAll('.rc-foto').forEach((b) => b.addEventListener('click', () => openPhoto(b.dataset.id)));
+  body.querySelectorAll('.rc-bukti').forEach((b) => b.addEventListener('click', () => markEvidence(b.dataset.id, b)));
+  body.querySelectorAll('.rc-manual').forEach((b) => b.addEventListener('click', () => manualMatch(Number(b.dataset.i))));
+  body.querySelectorAll('.rc-qty').forEach((b) => b.addEventListener('click', () => perbaikiJumlah(Number(b.dataset.i))));
+  body.querySelectorAll('.rc-add').forEach((b) => b.addEventListener('click', () => tambahDariStruk(Number(b.dataset.idx))));
   const deleteSame = $('btn-del-same');
   if (deleteSame) deleteSame.addEventListener('click', deleteSamePhotos);
 }
@@ -2182,22 +2231,45 @@ async function deleteSamePhotos() {
   alert('Foto item yang harganya sesuai telah dihapus.');
 }
 
-async function manualMatch(nama) {
+async function manualMatch(i) {
+  // `nama === i` hanya menjaga tes/penyimpan lama yang memanggil fungsi ini
+  // langsung; tombol UI selalu mengirim indeks grup.
+  const grup = lastGrup && lastGrup.find((entry) => entry.i === i || entry.nama === i);
+  if (!grup) return;
+  const nama = grup.nama;
   const input = prompt('Harga di struk kasir untuk "' + nama + '" (kosongkan bila memang tak ada):');
   if (input === null) return;
   const hargaKasir = parseInt(input, 10);
   const item = cart.find((entry) => entry.nama === nama);
   const hargaRak = item ? item.harga : 0;
-  const status = Number.isNaN(hargaKasir) ? 'tak_ketemu' : (hargaKasir === hargaRak ? 'sama' : 'beda');
-  const grup = lastGrup && lastGrup.find((entry) => entry.nama === nama);
-  if (grup) await applyReconcileResult({
+  const rows = lastReconcile && (Array.isArray(lastReconcile) ? lastReconcile : lastReconcile.rows);
+  const row = rows && rows.find((entry) => entry.i === grup.i || entry.nama === nama);
+  const totalKeranjang = row && row.totalKeranjang !== undefined ? row.totalKeranjang : hargaRak;
+  const status = Number.isNaN(hargaKasir) ? 'tak_ketemu'
+    : hargaKasir === totalKeranjang ? 'sama'
+      : Array.isArray(lastReconcile) ? 'beda'
+        : hargaKasir > totalKeranjang ? 'lebih_mahal' : 'lebih_murah';
+  await applyReconcileResult({
     rows: [{ i: grup.i, nama, hargaRak, totalStruk: Number.isNaN(hargaKasir) ? 0 : hargaKasir, status }],
   });
-  if (lastReconcile) {
-    const row = lastReconcile.find((entry) => entry.nama === nama);
-    if (row) { row.hargaKasir = Number.isNaN(hargaKasir) ? null : hargaKasir; row.status = status; }
+  if (row) {
+    if (Array.isArray(lastReconcile)) {
+      row.hargaKasir = Number.isNaN(hargaKasir) ? null : hargaKasir;
+    } else {
+      row.totalStruk = Number.isNaN(hargaKasir) ? 0 : hargaKasir;
+      row.selisih = row.totalStruk - row.totalKeranjang;
+    }
+    row.status = status;
   }
   if (lastReconcile) renderReconcile(lastReconcile);
+}
+
+// Buka sheet edit pada baris keranjang pertama dari grup ini. Sengaja TIDAK
+// mengubah qty otomatis: struk bisa benar, bisa juga kasir yang salah scan.
+function perbaikiJumlah(i) {
+  const g = lastGrup && lastGrup.find((x) => x.i === i);
+  if (!g || !g.rowIdx.length) return;
+  openEdit(g.rowIdx[0]);
 }
 
 function fileToBase64(file) {

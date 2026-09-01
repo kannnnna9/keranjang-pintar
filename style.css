@@ -65,6 +65,21 @@ body {
 .rc-foto, .rc-bukti, .rc-manual { background: none; border: 1px solid var(--border); color: var(--accent); border-radius: var(--radius-sm); padding: 4px 10px; min-height: 44px; cursor: pointer; }
 .rc-foto:hover, .rc-bukti:hover, .rc-manual:hover { border-color: var(--accent); color: var(--accent-hov); }
 .rc-collapse { max-height: 40vh; overflow-y: auto; }
+/* Jangkar total: pemeriksa bacaan struk, bukan status item. */
+.rc-anchor-ok  { color: var(--text-dim); font-size: 13px; }
+.rc-anchor-bad { color: var(--accent-hov); font-size: 13px; }
+/* Baris asing = ada di struk tapi tak discan. */
+.rc-asing { border-left: 2px solid var(--accent); padding-left: 8px; }
+.rc-add, .rc-qty {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--accent-hov);
+  border-radius: var(--radius-sm);
+  min-height: 36px;
+  padding: 0 10px;
+  font: inherit;
+  cursor: pointer;
+}
 .hist-reconcile {
   margin-top: 12px; padding-top: 12px;
   border-top: 1px solid var(--border);
