@@ -732,6 +732,7 @@ async function setupZoom(video, mediaStream) {
       });
     }
     const track = mediaStream.getVideoTracks()[0];
+    if (stream !== mediaStream) return;
     if (!track) return;
     const caps = track.getCapabilities ? track.getCapabilities() : {};
     zoomCaps = caps && caps.zoom ? caps.zoom : null;
@@ -742,7 +743,9 @@ async function setupZoom(video, mediaStream) {
       const target = levels.find((l) => l.x === zoomAktif);
       // Gagal pasang ulang → turunkan ke 1× supaya tombol aktif tak berbohong
       // soal keadaan kamera yang sebenarnya.
-      if (!target || !(await applyZoom(track, target.nilai, zoomCaps && zoomCaps.step))) {
+      const terpasang = target && await applyZoom(track, target.nilai, zoomCaps && zoomCaps.step);
+      if (stream !== mediaStream) return;
+      if (!terpasang) {
         zoomAktif = 1;
       }
       markZoomAktif();
