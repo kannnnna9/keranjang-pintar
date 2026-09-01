@@ -1490,7 +1490,14 @@ function reconcileHitung(grupCart, barisMentah) {
     jangkar: { cocok: jk.cocok, takTerjelaskan: jk.takTerjelaskan },
   };
 }
-function barisDariStruk(net, qty) { return null; }
+// Ubah satu baris struk asing jadi baris keranjang. Deterministik: kalau net tak
+// terbagi bulat, jadikan SATU baris seharga net supaya total keranjang tetap persis
+// benar — lebih baik satu baris "aneh" daripada pembulatan yang menyelip ke total.
+function barisDariStruk(net, qty) {
+  const q = Math.abs(rcAngka(qty)) || 1;
+  const satuan = Math.round(net / q);
+  return satuan * q === net ? { harga: satuan, qty: q } : { harga: net, qty: 1 };
+}
 /* ==== RECONCILE RULES (end) ==== */
 
 // Ekstraksi JSON dari balasan Gemini. Sanitasi & aturan TIDAK di sini —

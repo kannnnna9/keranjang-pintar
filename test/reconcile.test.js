@@ -42,6 +42,21 @@ const rcTaut = (list) => J(ctx.rcTautkanPotongan(list));
 const rcGrup = (list, p) => J(ctx.rcGrupStruk(list, p));
 const rcJang = (list) => J(ctx.rcJangkar(list));
 
+test('barisDariStruk: net terbagi bulat -> harga satuan x qty', () => {
+  assert.deepStrictEqual(barisDariStruk(38900, 1), { harga: 38900, qty: 1 });
+  assert.deepStrictEqual(barisDariStruk(2880, 2), { harga: 1440, qty: 2 });
+});
+
+test('barisDariStruk: net tak terbagi bulat -> satu baris seharga net', () => {
+  // Tak boleh ada pembulatan yang menyelip ke total keranjang.
+  assert.deepStrictEqual(barisDariStruk(1000, 3), { harga: 1000, qty: 1 });
+});
+
+test('barisDariStruk: qty 0 atau negatif dianggap 1', () => {
+  assert.deepStrictEqual(barisDariStruk(5000, 0), { harga: 5000, qty: 1 });
+  assert.deepStrictEqual(barisDariStruk(5000, -1), { harga: 5000, qty: 1 });
+});
+
 test('unitFisik: item biasa = qty', () => {
   assert.strictEqual(unitFisik({ harga: 3500, qty: 4 }), 4);
   assert.strictEqual(unitFisik({ harga: 3500 }), 1); // kompat data lama tanpa qty
