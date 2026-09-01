@@ -164,6 +164,8 @@ const RECONCILE_PROMPT = [
 let cart = [];          // [{ nama, harga, qty }]
 let pendingPromo = null; // promo{} yang akan ditempel ke item saat Tambah (null = tanpa promo)
 let stream = null;      // MediaStream kamera aktif
+let zoomAktif = 1;      // tingkat zoom (1|2|4) yang sedang dipilih user
+let zoomCaps = null;    // MediaTrackCapabilities.zoom dari kamera yang sedang hidup
 let lastShot = null;    // base64 JPEG hasil jepret terakhir (untuk "Ulangi")
 let cartSessionId = null; // id sesi belanja berjalan untuk grup foto F2
 let editIndex = -1;     // indeks item keranjang yang sedang diedit (-1 = tidak ada)
@@ -653,16 +655,120 @@ function zoomDiterima(diminta, aktual, step) {
 }
 /* ==== CAMERA ZOOM (end) ==== */
 
+// Terapkan zoom ke kamera. Pakai `advanced` (best-effort) supaya permintaan yang
+// tak didukung tidak mematikan stream; hasilnya diverifikasi lewat baca-balik.
+async function applyZoom(track, nilai, step) {
+  try { await track.applyConstraints({ advanced: [{ zoom: nilai }] }); }
+  catch (_) { return false; }
+  return zoomDiterima(nilai, track.getSettings ? track.getSettings().zoom : null, step);
+}
+
+function markZoomAktif() {
+  const row = $('zoom-row');
+  if (!row) return;
+  row.querySelectorAll('.zoom-btn').forEach((b) => {
+    b.setAttribute('aria-pressed', Number(b.dataset.x) === zoomAktif ? 'true' : 'false');
+  });
+}
+
+async function onZoomTap(x, nilai) {
+  if (!stream) return;
+  const track = stream.getVideoTracks()[0];
+  if (!track) return;
+  const ok = await applyZoom(track, nilai, zoomCaps && zoomCaps.step);
+  // Ditolak → level lama dipertahankan, TANPA banner error. Zoom gagal bukan
+  // bencana, cuma tidak terjadi. #cam-error disimpan untuk kegagalan yang
+  // benar-benar menghalangi (izin, kamera tak terbaca).
+  if (ok) { zoomAktif = x; markZoomAktif(); }
+}
+
+function renderZoomRow(levels) {
+  const row = $('zoom-row');
+  if (!row) return;
+  if (!levels.length) { row.innerHTML = ''; row.hidden = true; return; }
+  row.hidden = false;
+  row.innerHTML = levels.map((l) =>
+    `<button class="zoom-btn" type="button" data-x="${l.x}" data-nilai="${l.nilai}" aria-pressed="false">${l.x}×</button>`
+  ).join('');
+  row.querySelectorAll('.zoom-btn').forEach((b) => {
+    b.addEventListener('click', () => onZoomTap(Number(b.dataset.x), Number(b.dataset.nilai)));
+  });
+  markZoomAktif();
+}
+
+// Baris diagnosis di Pengaturan: instrumen verifikasi lapangan. Tanpa angka mentah
+// ini, laporan "4× buram" tak bisa dibedakan dari "HP-nya cuma sanggup 2×".
+function renderCamInfo(track, caps) {
+  const el = $('cam-info');
+  if (!el) return;
+  const s = track.getSettings ? track.getSettings() : {};
+  const res = s.width && s.height ? `${s.width}×${s.height}` : '—';
+  el.textContent = res + ' · ' + (caps ? `zoom ${caps.min}–${caps.max}` : 'tanpa zoom');
+}
+
+// Track kamera MATI dan LAHIR BARU tiap scan (freezeCamera saat jepret, stopCamera
+// saat kembali ke dashboard), dan track baru selalu mulai dari 1×. Jadi zoom wajib
+// dipasang ulang tiap kamera nyala. Fungsi ini dipanggil HANYA dari dalam
+// startCamera() — satu-satunya jalur yang dilewati semua pintu masuk kamera
+// (openCamera dan retryScan). Dengan begitu tak ada jalur yang bisa melewatkannya:
+// bugnya ditiadakan, bukan dijaga.
+// TIDAK PERNAH melempar: kegagalan zoom bukan kegagalan kamera.
+async function setupZoom(video, mediaStream) {
+  try {
+    // Beberapa Android WebView mengembalikan getCapabilities() kosong sebelum track
+    // benar-benar live. Timer 1,5s adalah jaring supaya tak menggantung bila
+    // event-nya tak pernah datang.
+    if (video.readyState < 1) {
+      await new Promise((res) => {
+        let selesai = false;
+        const done = () => {
+          if (selesai) return;
+          selesai = true;
+          video.removeEventListener('loadedmetadata', done);
+          res();
+        };
+        video.addEventListener('loadedmetadata', done);
+        setTimeout(done, 1500);
+      });
+    }
+    const track = mediaStream.getVideoTracks()[0];
+    if (!track) return;
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    zoomCaps = caps && caps.zoom ? caps.zoom : null;
+    const levels = zoomLevels(zoomCaps);
+    renderZoomRow(levels);
+    renderCamInfo(track, zoomCaps);
+    if (zoomAktif > 1) {
+      const target = levels.find((l) => l.x === zoomAktif);
+      // Gagal pasang ulang → turunkan ke 1× supaya tombol aktif tak berbohong
+      // soal keadaan kamera yang sebenarnya.
+      if (!target || !(await applyZoom(track, target.nilai, zoomCaps && zoomCaps.step))) {
+        zoomAktif = 1;
+      }
+      markZoomAktif();
+    }
+  } catch (_) { /* zoom gagal != kamera gagal */ }
+}
+
 async function startCamera() {
   const errBox = $('cam-error');
   errBox.hidden = true;
   if (stream) return; // sudah aktif
   try {
+    // Semua `ideal` — JANGAN `exact`: `exact` membuat getUserMedia menolak di HP
+    // yang tak punya resolusi itu, dan kamera gagal total. Payload ke Gemini tetap
+    // dibatasi MAX_CROP_W=800, jadi yang naik cuma ketajaman, bukan ukuran kirim.
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } },
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 3840 },
+        height: { ideal: 2160 },
+      },
       audio: false,
     });
-    $('video').srcObject = stream;
+    const video = $('video');
+    video.srcObject = stream;
+    await setupZoom(video, stream);
   } catch (e) {
     errBox.textContent =
       'Tidak bisa mengakses kamera: ' + e.message +
