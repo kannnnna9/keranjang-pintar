@@ -385,6 +385,36 @@ body {
 }
 .shutter:active { transform: scale(.92); }
 
+/* Baris tingkat zoom. `min-height` menahan tinggi sejak layar kamera dibuka:
+   tombol baru bisa digambar setelah stream hidup, jadi tanpa ruang yang sudah
+   disediakan barisnya sempat kosong lalu muncul mendadak dan layout melompat.
+   HP tanpa dukungan zoom menyembunyikan baris ini (sekali, saat kamera pertama
+   nyala) — pergeseran itu diterima sadar, ganti rugi dari tak menyisakan pita
+   kosong permanen. */
+.zoom-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  min-height: 52px;
+}
+.zoom-btn {
+  min-width: 48px;
+  min-height: 44px;   /* target sentuh minimum */
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.zoom-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent-hov);
+}
+
 /* ============================================================
    DASHBOARD
    ============================================================ */
